@@ -1,7 +1,8 @@
 services:
   - type: web
-    name: invoice-extractor
+    name: g-printer-app
     env: python
     buildCommand: ""
-    startCommand: gunicorn app:app
+    startCommand: "python app.py"
     plan: free
+    autoDeploy: true
