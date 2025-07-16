@@ -271,6 +271,23 @@
             font-size: 0.875rem;
             color: #333;
         }
+
+        /* Sheet info styles */
+        .sheet-info {
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+            padding: 0.25rem;
+            background-color: #f8fafc;
+            border-radius: 0.25rem;
+        }
+        .sheet-info-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+        .sheet-info-row {
+            display: flex;
+            justify-content: space-between;
+        }
     </style>
 </head>
 <body class="p-4 bg-gray-100">
@@ -288,6 +305,21 @@
                         <span id="loadButtonText">Upload</span>
                         <span id="loadSpinner" class="spinner hidden"></span>
                     </button>
+                    <div id="sheetInfo" class="sheet-info hidden">
+                        <div class="sheet-info-title">Sheets in uploaded file:</div>
+                        <div class="sheet-info-row">
+                            <span>Custom Report:</span>
+                            <span id="customReportRows">0 rows</span>
+                        </div>
+                        <div class="sheet-info-row">
+                            <span>Item Details:</span>
+                            <span id="itemDetailsRows">0 rows</span>
+                        </div>
+                        <div class="sheet-info-row">
+                            <span>Merged unique Data:</span>
+                            <span id="mergedDataRows">0 rows</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -422,6 +454,17 @@
                 
                 updateMatchingRowsTable();
                 populateDropdowns();
+                
+                // Display sheet information
+                const sheetInfoDiv = document.getElementById('sheetInfo');
+                sheetInfoDiv.classList.remove('hidden');
+                document.getElementById('customReportRows').textContent = 
+                    `${responseData.sheetStats?.customReportRows || 'N/A'} rows`;
+                document.getElementById('itemDetailsRows').textContent = 
+                    `${responseData.sheetStats?.itemDetailsRows || 'N/A'} rows`;
+                document.getElementById('mergedDataRows').textContent = 
+                    `${data.length} rows`;
+                
                 document.getElementById('printToggle').checked = false;
                 document.getElementById('printToggleLabel').textContent = 'Print All';
             })
@@ -436,6 +479,7 @@
                 filteredData = [];
                 selectedRows = new Set();
                 updateMatchingRowsTable();
+                document.getElementById('sheetInfo').classList.add('hidden');
                 document.getElementById('printToggle').checked = false;
                 document.getElementById('printToggleLabel').textContent = 'Print All';
             })

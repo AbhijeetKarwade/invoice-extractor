@@ -73,12 +73,6 @@
             background-color: #f9f9f9;
             margin-top: 5px;
         }
-        .description-row {
-            font-size: 8pt;
-            padding: 2px 0 2px 30px;
-            background-color: #f9f9f9;
-            margin-top: 3px;
-        }
         .item-table {
             margin: 10px 0 5px 30px;
             width: calc(100% - 30px);
@@ -125,6 +119,7 @@
         }
         .transaction-separator {
             margin: 5px 0;
+            border-top: 1px dashed #999;
         }
         
         /* Column Widths */
@@ -173,9 +168,6 @@
             .transaction-group {
                 page-break-inside: avoid;
             }
-            .transaction-separator {
-                border-top: 1px dashed #999;
-            }
             th {
                 position: static;
                 -webkit-print-color-adjust: exact;
@@ -218,7 +210,7 @@
                 <th>Txn Type</th>
                 <th>Ref No.</th>
                 <th>Total</th>
-                <th>Received Paid</th>
+                <th>Received/Paid</th>
                 <th>Txn Balance</th>
                 <th>Est. Balance</th>
             </tr>
@@ -232,380 +224,402 @@
     </table>
 
     <div class="button-container">
-        <button id="downloadPdf">PDF</button>
-        <button onclick="window.print()">Print</button>
+        <button id="printButton">Print</button>
         <button onclick="window.location.href='/'">Back to Home</button>
     </div>
 
     <script>
-        // Initialize jsPDF
-        const { jsPDF } = window.jspdf;
-
-        function formatValue(value) {
-            if (value === null || value === undefined || value === '') {
-                return '0.00';
-            }
+        // Wait for the DOM to be fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize jsPDF
+            const { jsPDF } = window.jspdf;
             
-            if (!isNaN(value) && value !== '') {
-                return parseFloat(value).toFixed(2);
-            }
-            
-            return value || '0.00';
-        }
-
-        function extractPartyInfo(partyString) {
-            if (!partyString) return { name: '', mobile: '' };
-            
-            const mobileMatch = partyString.match(/\d{10}/);
-            const mobile = mobileMatch ? mobileMatch[0] : '';
-            
-            let name = partyString.replace(/\(.*\d{10}.*\)/, '').trim();
-            if (!name) {
-                name = partyString.replace(/\d{10}/, '').replace(/[()]/g, '').trim();
-            }
-            
-            return { name, mobile };
-        }
-
-        function formatDate(dateStr) {
-            if (!dateStr) return 'Na';
-            return dateStr;
-        }
-
-        function getPaymentValue(row) {
-            const received = parseFloat(row['Received'] || 0);
-            const paid = parseFloat(row['Paid'] || 0);
-            return received + paid;
-        }
-
-        function createTransactionGroup(txn, runningBalance) {
-            const groupDiv = document.createElement('div');
-            groupDiv.className = 'transaction-group';
-            
-            // Transaction row
-            const headerTable = document.createElement('table');
-            headerTable.className = 'header-table';
-            
-            const headerBody = document.createElement('tbody');
-            headerBody.innerHTML = `
-                <tr>
-                    <td>${formatDate(txn.date)}</td>
-                    <td>${formatValue(txn.type)}</td>
-                    <td>${formatValue(txn.refNo)}</td>
-                    <td>${formatValue(txn.amount)}</td>
-                    <td>${formatValue(txn.payment)}</td>
-                    <td>${formatValue(txn.balance)}</td>
-                    <td>${formatValue(runningBalance)}</td>
-                </tr>
-            `;
-            headerTable.appendChild(headerBody);
-            groupDiv.appendChild(headerTable);
-            
-            // Item details if available
-            if (txn.itemName || txn.quantity) {
-                const detailsLabel = document.createElement('div');
-                detailsLabel.className = 'item-details-label';
-                groupDiv.appendChild(detailsLabel);
-                
-                const itemTable = document.createElement('table');
-                itemTable.className = 'item-table';
-                
-                const itemThead = document.createElement('thead');
-                itemThead.innerHTML = `
-                    <tr>
-                        <th>#</th>
-                        <th>Item name</th>
-                        <th>Size</th>
-                        <th>Quantity</th>
-                        <th>Unit</th>
-                        <th>Price/Unit</th>
-                        <th class="amount-column">Amount</th>
-                    </tr>
-                `;
-                itemTable.appendChild(itemThead);
-                
-                const itemTbody = document.createElement('tbody');
-                itemTbody.innerHTML = `
-                    <tr>
-                        <td>1</td>
-                        <td>${formatValue(txn.itemName)}</td>
-                        <td>${formatValue(txn.size)}</td>
-                        <td>${formatValue(txn.quantity)}</td>
-                        <td>${formatValue(txn.unit)}</td>
-                        <td>${formatValue(txn.price)}</td>
-                        <td class="amount-column">${formatValue(txn.amount)}</td>
-                    </tr>
-                    <tr class="total-row">
-                        <td colspan="3">Total</td>
-                        <td>${formatValue(txn.quantity)}</td>
-                        <td colspan="2"></td>
-                        <td class="amount-column">${formatValue(txn.amount)}</td>
-                    </tr>
-                `;
-                itemTable.appendChild(itemTbody);
-                groupDiv.appendChild(itemTable);
-            }
-            
-            // Add description if available
-            if (txn.description) {
-                const descDiv = document.createElement('div');
-                descDiv.className = 'description-row';
-                descDiv.textContent = `Description: ${txn.description}`;
-                groupDiv.appendChild(descDiv);
-            }
-            
-            // Add separator
-            const separator = document.createElement('div');
-            separator.className = 'transaction-separator';
-            groupDiv.appendChild(separator);
-            
-            return groupDiv;
-        }
-
-        // Function to generate and download PDF
-        function generatePDF() {
-            const doc = new jsPDF({
-                orientation: 'portrait',
-                unit: 'mm'
-            });
-
-            // Get party info and date range
-            const partyInfo = JSON.parse(sessionStorage.getItem('partyInfo') || {});
-            const dateRange = JSON.parse(sessionStorage.getItem('dateRange') || {});
-            const partyName = partyInfo.name || 'Na';
-            const contactNo = partyInfo.mobile || 'Na';
-            const duration = `${dateRange.from || 'Na'} - ${dateRange.to || 'Na'}`;
-
-            // Add header
-            doc.setFontSize(14);
-            doc.text(`Party: ${partyName}`, 15, 15);
-            doc.text(`Contact: ${contactNo}`, 105, 15);
-            doc.setFontSize(10);
-            doc.text(`Duration: ${duration}`, 15, 22);
-
-            // Add transaction table
-            const headers = [
-                'Date', 
-                'Txn Type', 
-                'Ref No.', 
-                'Total', 
-                'Received Paid', 
-                'Txn Balance', 
-                'Est. Balance'
-            ];
-
-            const filteredData = JSON.parse(sessionStorage.getItem('filteredData') || []);
-            const transactions = [];
-
-            // Process all transactions
-            let openingBalance = 0;
-            let runningBalance = 0;
-            
-            // Find opening balance
-            const openingBalanceRow = filteredData.find(row => row['Ref_No'] === 'Opening Balance');
-            if (openingBalanceRow) {
-                const openingPayment = getPaymentValue(openingBalanceRow);
-                openingBalance = parseFloat(openingBalanceRow['Total'] || 0) - openingPayment;
-                runningBalance = openingBalance;
-            }
-
-            // Add opening balance row
-            transactions.push([
-                'Opening Balance',
-                'N/A',
-                'N/A',
-                Math.abs(openingBalance).toFixed(2),
-                '0.00',
-                openingBalance.toFixed(2),
-                openingBalance.toFixed(2)
-            ]);
-
-            // Add other transactions
-            filteredData.forEach(row => {
-                if (row['Ref_No'] === 'Opening Balance') return;
-                
-                const payment = getPaymentValue(row);
-                const total = parseFloat(row['Total'] || 0);
-                const balance = total - payment;
-                runningBalance += balance;
-                
-                transactions.push([
-                    formatDate(row['date']),
-                    row['Txn Type'] || row['Type'] || 'Sale',
-                    row['Ref_No'] || 'N/A',
-                    formatValue(total),
-                    formatValue(payment),
-                    formatValue(balance),
-                    formatValue(runningBalance)
-                ]);
-            });
-
-            // Add transaction table
-            doc.autoTable({
-                startY: 30,
-                head: [headers],
-                body: transactions,
-                styles: {
-                    fontSize: 8,
-                    cellPadding: 2,
-                    overflow: 'linebreak'
-                },
-                headStyles: {
-                    fillColor: [211, 211, 211],
-                    textColor: [0, 0, 0]
-                },
-                alternateRowStyles: {
-                    fillColor: [245, 245, 245]
-                },
-                columnStyles: {
-                    0: { cellWidth: 15 },
-                    1: { cellWidth: 20 },
-                    2: { cellWidth: 25 },
-                    3: { cellWidth: 20, halign: 'right' },
-                    4: { cellWidth: 20, halign: 'right' },
-                    5: { cellWidth: 20, halign: 'right' },
-                    6: { cellWidth: 20, halign: 'right' }
+            // Format values for display
+            function formatValue(value) {
+                if (value === null || value === undefined || value === '') {
+                    return '0.00';
                 }
-            });
-
-            // Add summary
-            const lastY = doc.lastAutoTable.finalY + 10;
-            doc.setFontSize(10);
-            doc.text(`Sub Total: ${runningBalance.toFixed(2)}`, 150, lastY, { align: 'right' });
-            doc.text(`Total: ${runningBalance.toFixed(2)}`, 150, lastY + 5, { align: 'right' });
-
-            // Save the PDF
-            doc.save(`Invoice_Report_${partyName.replace(/[^a-zA-Z0-9]/g, '_')}_${dateRange.from || ''}_${dateRange.to || ''}.pdf`);
-        }
-
-        // Add event listener for PDF button
-        document.getElementById('downloadPdf').addEventListener('click', generatePDF);
-
-        window.addEventListener('load', () => {
-            const filteredData = JSON.parse(sessionStorage.getItem('filteredData') || '[]');
-            const dateRange = JSON.parse(sessionStorage.getItem('dateRange') || '{}');
-            const partyInfo = JSON.parse(sessionStorage.getItem('partyInfo') || '{}');
-            
-            document.getElementById('partyName').textContent = partyInfo.name || 'Na';
-            document.getElementById('contactNo').textContent = partyInfo.mobile || 'Na';
-            document.getElementById('duration').textContent = 
-                ` ${dateRange.from || 'Na'} - ${dateRange.to || 'Na'}`;
-
-            const transactionContainer = document.getElementById('transactionContainer');
-            const summaryRowsContainer = document.getElementById('summaryRows');
-            
-            if (filteredData.length === 0) {
-                transactionContainer.innerHTML = '<p>No transaction data available.</p>';
-                return;
+                
+                if (!isNaN(value) && value !== '') {
+                    return parseFloat(value).toFixed(2);
+                }
+                
+                return value || '0.00';
             }
 
-            // Process all transactions
-            const transactions = [];
-            const allDescriptions = [];
-            
-            filteredData.forEach(row => {
-                const payment = getPaymentValue(row);
-                const total = parseFloat(row['Total'] || 0);
-                const balance = total - payment;
-                
-                transactions.push({
-                    date: row['date'],
-                    type: row['Txn Type'] || row['Type'] || 'Sale',
-                    refNo: row['Ref_No'] || 'N/A',
-                    amount: total,
-                    payment: payment,
-                    balance: balance,
-                    description: row['Description_x'],
-                    itemName: row['Item Name'],
-                    size: row['Size'],
-                    quantity: row['Quantity'],
-                    unit: row['Unit'],
-                    price: row['Price/ Unit'] || row['UnitPrice']
-                });
-                
-                if (row['Description_x']) {
-                    allDescriptions.push(row['Description_x']);
-                }
-            });
+            // Format reference number to remove .00 if present
+            function formatRefNo(refNo) {
+                if (!refNo || refNo === 'N/A') return 'N/A';
+                return refNo.toString().replace(/\.00$/, '');
+            }
 
-            // Calculate opening balance using Total column
-            let openingBalance = 0;
-            const openingBalanceRow = filteredData.find(row => row['Ref_No'] === 'Opening Balance');
-            if (openingBalanceRow) {
-                const openingPayment = getPaymentValue(openingBalanceRow);
-                openingBalance = parseFloat(openingBalanceRow['Total'] || 0) - openingPayment;
+            // Extract party info from string
+            function extractPartyInfo(partyString) {
+                if (!partyString) return { name: '', mobile: '' };
                 
-                // Create opening balance group
-                const openingGroup = document.createElement('div');
-                openingGroup.className = 'transaction-group';
+                const mobileMatch = partyString.match(/\d{10}/);
+                const mobile = mobileMatch ? mobileMatch[0] : '';
                 
+                let name = partyString.replace(/\(.*\d{10}.*\)/, '').trim();
+                if (!name) {
+                    name = partyString.replace(/\d{10}/, '').replace(/[()]/g, '').trim();
+                }
+                
+                return { name, mobile };
+            }
+
+            // Format date for display
+            function formatDate(dateStr) {
+                if (!dateStr) return 'Na';
+                return dateStr;
+            }
+
+            // Calculate payment value from row
+            function getPaymentValue(row) {
+                const received = parseFloat(row['Received'] || 0);
+                const paid = parseFloat(row['Paid'] || 0);
+                return received + paid;
+            }
+
+            // Create a transaction group element
+            function createTransactionGroup(txn, runningBalance) {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'transaction-group';
+                
+                // Transaction row
                 const headerTable = document.createElement('table');
                 headerTable.className = 'header-table';
-                headerTable.innerHTML = `
-                    <tbody>
-                        <tr>
-                            <td>Opening Balance</td>
-                            <td>N/A</td>
-                            <td>N/A</td>
-                            <td>${Math.abs(openingBalance).toFixed(2)}</td>
-                            <td>0.00</td>
-                            <td>${openingBalance.toFixed(2)}</td>
-                            <td>${openingBalance.toFixed(2)}</td>
-                        </tr>
-                    </tbody>
-                `;
-                openingGroup.appendChild(headerTable);
                 
+                const headerBody = document.createElement('tbody');
+                headerBody.innerHTML = `
+                    <tr>
+                        <td>${formatDate(txn.date)}</td>
+                        <td>${formatValue(txn.type)}</td>
+                        <td>${formatRefNo(txn.refNo)}</td>
+                        <td>${formatValue(txn.amount)}</td>
+                        <td>${formatValue(txn.payment)}</td>
+                        <td>${formatValue(txn.balance)}</td>
+                        <td>${formatValue(runningBalance)}</td>
+                    </tr>
+                `;
+                headerTable.appendChild(headerBody);
+                groupDiv.appendChild(headerTable);
+                
+                // Item details if available
+                if (txn.itemName || txn.quantity) {
+                    const detailsLabel = document.createElement('div');
+                    detailsLabel.className = 'item-details-label';
+                    
+                    groupDiv.appendChild(detailsLabel);
+                    
+                    const itemTable = document.createElement('table');
+                    itemTable.className = 'item-table';
+                    
+                    const itemThead = document.createElement('thead');
+                    itemThead.innerHTML = `
+                        <tr>
+                            <th>#</th>
+                            <th>Item name</th>
+                            <th>Size</th>
+                            <th>Quantity</th>
+                            <th>Unit</th>
+                            <th>Price/Unit</th>
+                            <th class="amount-column">Amount</th>
+                        </tr>
+                    `;
+                    itemTable.appendChild(itemThead);
+                    
+                    const itemTbody = document.createElement('tbody');
+                    itemTbody.innerHTML = `
+                        <tr>
+                            <td>1</td>
+                            <td>${formatValue(txn.itemName)}</td>
+                            <td>${formatValue(txn.size)}</td>
+                            <td>${formatValue(txn.quantity)}</td>
+                            <td>${formatValue(txn.unit)}</td>
+                            <td>${formatValue(txn.price)}</td>
+                            <td class="amount-column">${formatValue(txn.amount)}</td>
+                        </tr>
+                        <tr class="total-row">
+                            <td colspan="3">Total</td>
+                            <td>${formatValue(txn.quantity)}</td>
+                            <td colspan="2"></td>
+                            <td class="amount-column">${formatValue(txn.amount)}</td>
+                        </tr>
+                    `;
+                    itemTable.appendChild(itemTbody);
+                    groupDiv.appendChild(itemTable);
+                }
+                
+                // Add description if available
+                if (txn.description) {
+                    const descDiv = document.createElement('div');
+                    descDiv.className = 'description-row';
+                    descDiv.textContent = `Description: ${txn.description}`;
+                    groupDiv.appendChild(descDiv);
+                }
+                
+                // Add separator
                 const separator = document.createElement('div');
                 separator.className = 'transaction-separator';
-                openingGroup.appendChild(separator);
+                groupDiv.appendChild(separator);
                 
-                transactionContainer.appendChild(openingGroup);
+                return groupDiv;
             }
 
-            // Sort transactions by date
-            transactions.sort((a, b) => {
-                const dateA = a.date ? new Date(a.date.split('/').reverse().join('/')) : new Date(0);
-                const dateB = b.date ? new Date(b.date.split('/').reverse().join('/')) : new Date(0);
-                return dateA - dateB;
+            // Function to generate and download PDF
+            function generatePDF() {
+                try {
+                    const doc = new jsPDF({
+                        orientation: 'portrait',
+                        unit: 'mm'
+                    });
+
+                    // Get data from session storage
+                    const partyInfo = JSON.parse(sessionStorage.getItem('partyInfo') || '{}');
+                    const dateRange = JSON.parse(sessionStorage.getItem('dateRange') || '{}');
+                    const filteredData = JSON.parse(sessionStorage.getItem('filteredData') || '[]');
+                    
+                    const partyName = partyInfo.name || 'Na';
+                    const contactNo = partyInfo.mobile || 'Na';
+                    const duration = `${dateRange.from || 'Na'} - ${dateRange.to || 'Na'}`;
+
+                    // Add header
+                    doc.setFontSize(14);
+                    doc.text(`Party: ${partyName}`, 15, 15);
+                    doc.text(`Contact: ${contactNo}`, 105, 15);
+                    doc.setFontSize(10);
+                    doc.text(`Duration: ${duration}`, 15, 22);
+
+                    // Add transaction table
+                    const headers = [
+                        'Date', 
+                        'Txn Type', 
+                        'Ref No.', 
+                        'Total', 
+                        'Received/Paid', 
+                        'Txn Balance', 
+                        'Est. Balance'
+                    ];
+
+                    const transactions = [];
+
+                    // Process all transactions
+                    let openingBalance = 0;
+                    let runningBalance = 0;
+                    
+                    // Find opening balance
+                    const openingBalanceRow = filteredData.find(row => row['Ref_No'] === 'Opening Balance');
+                    if (openingBalanceRow) {
+                        const openingPayment = getPaymentValue(openingBalanceRow);
+                        openingBalance = parseFloat(openingBalanceRow['Total'] || 0) - openingPayment;
+                        runningBalance = openingBalance;
+                    }
+
+                    // Add opening balance row
+                    transactions.push([
+                        'Opening Balance',
+                        'N/A',
+                        'N/A',
+                        Math.abs(openingBalance).toFixed(2),
+                        '0.00',
+                        openingBalance.toFixed(2),
+                        openingBalance.toFixed(2)
+                    ]);
+
+                    // Add other transactions
+                    filteredData.forEach(row => {
+                        if (row['Ref_No'] === 'Opening Balance') return;
+                        
+                        const payment = getPaymentValue(row);
+                        const total = parseFloat(row['Total'] || 0);
+                        const balance = total - payment;
+                        runningBalance += balance;
+                        
+                        transactions.push([
+                            formatDate(row['date']),
+                            row['Txn Type'] || row['Type'] || 'Sale',
+                            formatRefNo(row['Ref_No'] || 'N/A'),
+                            formatValue(total),
+                            formatValue(payment),
+                            formatValue(balance),
+                            formatValue(runningBalance)
+                        ]);
+                    });
+
+                    // Add transaction table
+                    doc.autoTable({
+                        startY: 30,
+                        head: [headers],
+                        body: transactions,
+                        styles: {
+                            fontSize: 8,
+                            cellPadding: 2,
+                            overflow: 'linebreak'
+                        },
+                        headStyles: {
+                            fillColor: [211, 211, 211],
+                            textColor: [0, 0, 0]
+                        },
+                        alternateRowStyles: {
+                            fillColor: [245, 245, 245]
+                        },
+                        columnStyles: {
+                            0: { cellWidth: 15 },
+                            1: { cellWidth: 20 },
+                            2: { cellWidth: 25 },
+                            3: { cellWidth: 20, halign: 'right' },
+                            4: { cellWidth: 20, halign: 'right' },
+                            5: { cellWidth: 20, halign: 'right' },
+                            6: { cellWidth: 20, halign: 'right' }
+                        }
+                    });
+
+                    // Add summary
+                    const lastY = doc.lastAutoTable.finalY + 10;
+                    doc.setFontSize(10);
+                    doc.text(`Sub Total: ${runningBalance.toFixed(2)}`, 150, lastY, { align: 'right' });
+                    doc.text(`Total: ${runningBalance.toFixed(2)}`, 150, lastY + 5, { align: 'right' });
+
+                    // Save the PDF
+                    doc.save(`Invoice_Report_${partyName.replace(/[^a-zA-Z0-9]/g, '_')}_${dateRange.from || ''}_${dateRange.to || ''}.pdf`);
+                } catch (error) {
+                    console.error('Error generating PDF:', error);
+                    alert('Error generating PDF. Please check console for details.');
+                }
+            }
+
+            // Function to load and display data
+            function loadData() {
+                // Get data from session storage
+                const filteredData = JSON.parse(sessionStorage.getItem('filteredData') || '[]');
+                const dateRange = JSON.parse(sessionStorage.getItem('dateRange') || '{}');
+                const partyInfo = JSON.parse(sessionStorage.getItem('partyInfo') || '{}');
+                
+                // Set header information
+                document.getElementById('partyName').textContent = partyInfo.name || 'Na';
+                document.getElementById('contactNo').textContent = partyInfo.mobile || 'Na';
+                document.getElementById('duration').textContent = 
+                    ` ${dateRange.from || 'Na'} - ${dateRange.to || 'Na'}`;
+
+                const transactionContainer = document.getElementById('transactionContainer');
+                const summaryRowsContainer = document.getElementById('summaryRows');
+                
+                if (filteredData.length === 0) {
+                    transactionContainer.innerHTML = '<p>No transaction data available.</p>';
+                    return;
+                }
+
+                // Process all transactions
+                const transactions = [];
+                const allDescriptions = [];
+                
+                filteredData.forEach(row => {
+                    const payment = getPaymentValue(row);
+                    const total = parseFloat(row['Total'] || 0);
+                    const balance = total - payment;
+                    
+                    transactions.push({
+                        date: row['date'],
+                        type: row['Txn Type'] || row['Type'] || 'Sale',
+                        refNo: formatRefNo(row['Ref_No'] || 'N/A'),
+                        amount: total,
+                        payment: payment,
+                        balance: balance,
+                        description: row['Description_x'],
+                        itemName: row['Item Name'],
+                        size: row['Size'],
+                        quantity: row['Quantity'],
+                        unit: row['Unit'],
+                        price: row['Price/ Unit'] || row['UnitPrice']
+                    });
+                    
+                    if (row['Description_x']) {
+                        allDescriptions.push(row['Description_x']);
+                    }
+                });
+
+                // Calculate opening balance using Total column
+                let openingBalance = 0;
+                const openingBalanceRow = filteredData.find(row => row['Ref_No'] === 'Opening Balance');
+                if (openingBalanceRow) {
+                    const openingPayment = getPaymentValue(openingBalanceRow);
+                    openingBalance = parseFloat(openingBalanceRow['Total'] || 0) - openingPayment;
+                    
+                    // Create opening balance group
+                    const openingGroup = document.createElement('div');
+                    openingGroup.className = 'transaction-group';
+                    
+                    const headerTable = document.createElement('table');
+                    headerTable.className = 'header-table';
+                    headerTable.innerHTML = `
+                        <tbody>
+                            <tr>
+                                <td>Opening Balance</td>
+                                <td>N/A</td>
+                                <td>N/A</td>
+                                <td>${Math.abs(openingBalance).toFixed(2)}</td>
+                                <td>0.00</td>
+                                <td>${openingBalance.toFixed(2)}</td>
+                                <td>${openingBalance.toFixed(2)}</td>
+                            </tr>
+                        </tbody>
+                    `;
+                    openingGroup.appendChild(headerTable);
+                    
+                    const separator = document.createElement('div');
+                    separator.className = 'transaction-separator';
+                    openingGroup.appendChild(separator);
+                    
+                    transactionContainer.appendChild(openingGroup);
+                }
+
+                // Sort transactions by date
+                transactions.sort((a, b) => {
+                    const dateA = a.date ? new Date(a.date.split('/').reverse().join('/')) : new Date(0);
+                    const dateB = b.date ? new Date(b.date.split('/').reverse().join('/')) : new Date(0);
+                    return dateA - dateB;
+                });
+
+                let runningBalance = openingBalance;
+                let grandTotal = openingBalance;
+                
+                // Add each transaction as a separate group
+                transactions.forEach(txn => {
+                    if (txn.refNo === 'Opening Balance') return;
+                    
+                    runningBalance += txn.balance;
+                    grandTotal = runningBalance;
+                    
+                    const transactionGroup = createTransactionGroup(txn, runningBalance);
+                    transactionContainer.appendChild(transactionGroup);
+                });
+
+                // Add summary rows
+                const subtotalRow = document.createElement('tr');
+                subtotalRow.className = 'subtotal-row';
+                subtotalRow.innerHTML = `
+                    <td colspan="6"></td>
+                    <td class="amount-column">Sub Total: ${grandTotal.toFixed(2)}</td>
+                `;
+                summaryRowsContainer.appendChild(subtotalRow);
+
+                const finalTotalRow = document.createElement('tr');
+                finalTotalRow.className = 'final-total-row';
+                finalTotalRow.innerHTML = `
+                    <td colspan="6"></td>
+                    <td class="amount-column">Total: ${grandTotal.toFixed(2)}</td>
+                `;
+                summaryRowsContainer.appendChild(finalTotalRow);
+            }
+
+            // Add event listeners
+            document.getElementById('printButton').addEventListener('click', function() {
+                window.print();
             });
 
-            let runningBalance = openingBalance;
-            let grandTotal = openingBalance;
-            
-            // Add each transaction as a separate group
-            transactions.forEach(txn => {
-                if (txn.refNo === 'Opening Balance') return;
-                
-                runningBalance += txn.balance;
-                grandTotal = runningBalance;
-                
-                const transactionGroup = createTransactionGroup(txn, runningBalance);
-                transactionContainer.appendChild(transactionGroup);
-            });
-
-            // Add summary rows
-            const subtotalRow = document.createElement('tr');
-            subtotalRow.className = 'subtotal-row';
-            subtotalRow.innerHTML = `
-                <td colspan="6"></td>
-                <td class="amount-column">Sub Total: ${grandTotal.toFixed(2)}</td>
-            `;
-            summaryRowsContainer.appendChild(subtotalRow);
-
-            const finalTotalRow = document.createElement('tr');
-            finalTotalRow.className = 'final-total-row';
-            finalTotalRow.innerHTML = `
-                <td colspan="6"></td>
-                <td class="amount-column">Total: ${grandTotal.toFixed(2)}</td>
-            `;
-            summaryRowsContainer.appendChild(finalTotalRow);
-
-            // Clean up session storage
-            sessionStorage.removeItem('filteredData');
-            sessionStorage.removeItem('columnsToShow');
-            sessionStorage.removeItem('dateRange');
-            sessionStorage.removeItem('partyInfo');
+            // Load and display the data
+            loadData();
         });
     </script>
 </body>

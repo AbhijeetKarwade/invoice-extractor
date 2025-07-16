@@ -4,6 +4,7 @@ import pandas as pd
 from werkzeug.utils import secure_filename
 import json
 import math
+import logging
 
 app = Flask(__name__, static_folder='static', template_folder='static')
 
@@ -12,6 +13,10 @@ UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'xlsx'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Ensure upload directory exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -32,76 +37,83 @@ def convert_nans(obj):
 def process_excel_file(filepath):
     """Process the Excel file and return the processed data in memory"""
     try:
-        # Read the two sheets, specifying header row (row 3, so header=2)
-        df_custom = pd.read_excel(filepath, sheet_name='Custom Report', header=2)
-        df_items = pd.read_excel(filepath, sheet_name='Item Details', header=2)
+        # Use context manager to ensure the file is properly closed
+        with pd.ExcelFile(filepath) as excel_file:
+            # Read the two sheets, specifying header row (row 3, so header=2)
+            df_custom = pd.read_excel(excel_file, sheet_name='Custom Report', header=2)
+            df_items = pd.read_excel(excel_file, sheet_name='Item Details', header=2)
 
-        # Clean column names by stripping whitespace
-        df_custom.columns = df_custom.columns.str.strip()
-        df_items.columns = df_items.columns.str.strip()
+            # Clean column names by stripping whitespace
+            df_custom.columns = df_custom.columns.str.strip()
+            df_items.columns = df_items.columns.str.strip()
 
-        # Function to remove empty columns
-        def remove_empty_columns(df):
-            # Check which columns are completely empty (all NaN or empty strings)
-            empty_cols = [col for col in df.columns 
-                         if df[col].isna().all() or (df[col].astype(str).str.strip().eq('').all())]
-            # Drop empty columns
-            return df.drop(columns=empty_cols)
+            # Function to remove empty columns
+            def remove_empty_columns(df):
+                # Check which columns are completely empty (all NaN or empty strings)
+                empty_cols = [col for col in df.columns 
+                             if df[col].isna().all() or (df[col].astype(str).str.strip().eq('').all())]
+                # Drop empty columns
+                return df.drop(columns=empty_cols)
 
-        # Remove empty columns from both dataframes
-        df_custom = remove_empty_columns(df_custom)
-        df_items = remove_empty_columns(df_items)
+            # Remove empty columns from both dataframes
+            df_custom = remove_empty_columns(df_custom)
+            df_items = remove_empty_columns(df_items)
 
-        # Rest of the existing processing code remains the same...
-        # Select key columns and rename for consistency
-        df_custom_key = df_custom[['Date', 'Reference No']].rename(columns={'Date': 'date', 'Reference No': 'Ref_No'})
-        df_items_key = df_items[['Date', 'Invoice No./Txn No.']].rename(columns={'Date': 'date', 'Invoice No./Txn No.': 'Ref_No'})
+            # Select key columns and rename for consistency
+            df_custom_key = df_custom[['Date', 'Reference No']].rename(columns={'Date': 'date', 'Reference No': 'Ref_No'})
+            df_items_key = df_items[['Date', 'Invoice No./Txn No.']].rename(columns={'Date': 'date', 'Invoice No./Txn No.': 'Ref_No'})
 
-        # Combine key columns without removing duplicates
-        parent_table = pd.concat([df_custom_key, df_items_key], ignore_index=True)
-        parent_table['date'] = pd.to_datetime(parent_table['date'], dayfirst=True, errors='coerce')
+            # Combine key columns without removing duplicates
+            parent_table = pd.concat([df_custom_key, df_items_key], ignore_index=True)
+            parent_table['date'] = pd.to_datetime(parent_table['date'], dayfirst=True, errors='coerce')
 
-        # Prepare remaining columns from both sheets
-        custom_remaining = df_custom.drop(columns=['Date', 'Reference No'])
-        items_remaining = df_items.drop(columns=['Date', 'Invoice No./Txn No.'])
+            # Prepare remaining columns from both sheets
+            custom_remaining = df_custom.drop(columns=['Date', 'Reference No'])
+            items_remaining = df_items.drop(columns=['Date', 'Invoice No./Txn No.'])
 
-        # Add Ref_No and date back for merging
-        custom_remaining['Ref_No'] = df_custom['Reference No']
-        custom_remaining['date'] = df_custom['Date']
-        items_remaining['Ref_No'] = df_items['Invoice No./Txn No.']
-        items_remaining['date'] = df_items['Date']
+            # Add Ref_No and date back for merging
+            custom_remaining['Ref_No'] = df_custom['Reference No']
+            custom_remaining['date'] = df_custom['Date']
+            items_remaining['Ref_No'] = df_items['Invoice No./Txn No.']
+            items_remaining['date'] = df_items['Date']
 
-        # Convert dates to datetime for consistent merging
-        custom_remaining['date'] = pd.to_datetime(custom_remaining['date'], dayfirst=True, errors='coerce')
-        items_remaining['date'] = pd.to_datetime(items_remaining['date'], dayfirst=True, errors='coerce')
+            # Convert dates to datetime for consistent merging
+            custom_remaining['date'] = pd.to_datetime(custom_remaining['date'], dayfirst=True, errors='coerce')
+            items_remaining['date'] = pd.to_datetime(items_remaining['date'], dayfirst=True, errors='coerce')
 
-        # Merge with parent_table using Ref_No and date to preserve duplicates
-        parent_table = parent_table.merge(custom_remaining, on=['Ref_No', 'date'], how='outer')
-        parent_table = parent_table.merge(items_remaining, on=['Ref_No', 'date'], how='outer')
+            # Merge with parent_table using Ref_No and date to preserve duplicates
+            parent_table = parent_table.merge(custom_remaining, on=['Ref_No', 'date'], how='outer')
+            parent_table = parent_table.merge(items_remaining, on=['Ref_No', 'date'], how='outer')
 
-        # Handle missing values - fill with empty string for strings, 0 for numbers
-        string_columns = [col for col in parent_table.columns if parent_table[col].dtype == 'object']
-        numeric_columns = [col for col in parent_table.columns if parent_table[col].dtype in ['float64', 'int64']]
-        parent_table[string_columns] = parent_table[string_columns].fillna('')
-        parent_table[numeric_columns] = parent_table[numeric_columns].fillna(0)
-        
-        
-        # Sort by date and Ref_No
-        parent_table = parent_table.sort_values(by=['date', 'Ref_No'])
+            # Handle missing values - fill with empty string for strings, 0 for numbers
+            string_columns = [col for col in parent_table.columns if parent_table[col].dtype == 'object']
+            numeric_columns = [col for col in parent_table.columns if parent_table[col].dtype in ['float64', 'int64']]
+            parent_table[string_columns] = parent_table[string_columns].fillna('')
+            parent_table[numeric_columns] = parent_table[numeric_columns].fillna(0)
+            
+            # Sort by date and Ref_No
+            parent_table = parent_table.sort_values(by=['date', 'Ref_No'])
 
-        # Format date to DD/MM/YYYY
-        parent_table['date'] = parent_table['date'].dt.strftime('%d/%m/%Y')
+            # Format date to DD/MM/YYYY
+            parent_table['date'] = parent_table['date'].dt.strftime('%d/%m/%Y')
 
-        # Remove duplicates based on all columns
-        parent_table = parent_table.drop_duplicates(keep='first')
+            # Remove duplicates based on all columns
+            parent_table = parent_table.drop_duplicates(keep='first')
 
-        # Convert the processed DataFrame to a dictionary and clean NaN values
-        processed_data = parent_table.to_dict(orient='records')
-        processed_data = convert_nans(processed_data)
-        
-        return processed_data, list(parent_table.columns)
+            # Convert the processed DataFrame to a dictionary and clean NaN values
+            processed_data = parent_table.to_dict(orient='records')
+            processed_data = convert_nans(processed_data)
+            
+            # Get row counts for each sheet
+            sheet_stats = {
+                'customReportRows': len(df_custom),
+                'itemDetailsRows': len(df_items)
+            }
+            
+            return processed_data, list(parent_table.columns), sheet_stats
     except Exception as e:
-        return None, str(e)
+        logger.error(f"Error processing Excel file: {str(e)}")
+        return None, str(e), None
 
 @app.route('/')
 def index():
@@ -123,22 +135,35 @@ def upload_file():
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
         
-        # Process the Excel file and get data in memory
-        processed_data, error_or_headers = process_excel_file(filepath)
-        
-        # Remove the uploaded file after processing to save space
-        os.remove(filepath)
-        
-        if isinstance(error_or_headers, str):  # It's an error message
-            return jsonify({'error': error_or_headers}), 500
-        
-        return jsonify({
-            'message': 'File successfully processed',
-            'data': processed_data,
-            'headers': error_or_headers  # In this case, it's the headers list
-        })
+        try:
+            # Save the uploaded file
+            file.save(filepath)
+            
+            # Process the Excel file and get data in memory
+            processed_data, error_or_headers, sheet_stats = process_excel_file(filepath)
+            
+            if isinstance(error_or_headers, str):  # It's an error message
+                return jsonify({'error': error_or_headers}), 500
+            
+            return jsonify({
+                'message': 'File successfully processed',
+                'data': processed_data,
+                'headers': error_or_headers,  # In this case, it's the headers list
+                'sheetStats': sheet_stats
+            })
+        except Exception as e:
+            logger.error(f"Error during file processing: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+        finally:
+            # Ensure the file is deleted after processing
+            try:
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+                    logger.info(f"Successfully deleted temporary file: {filepath}")
+            except Exception as e:
+                logger.error(f"Error deleting file {filepath}: {str(e)}")
+                # Continue even if deletion fails - the file will be cleaned up later
     
     return jsonify({'error': 'Invalid file type'}), 400
 
