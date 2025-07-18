@@ -116,6 +116,10 @@
         .combo-box-option.selected {
             background-color: #e0e0e0;
         }
+        .combo-box-option.blank-option {
+            font-style: italic;
+            color: #666;
+        }
 
         /* Section header styles */
         .section-header {
@@ -271,7 +275,7 @@
             font-size: 0.875rem;
             color: #333;
         }
-
+        
         /* Sheet info styles */
         .sheet-info {
             font-size: 0.75rem;
@@ -532,8 +536,11 @@
                     dateRangeContainer.classList.remove('active');
                     dateRangeActive.classList.add('hidden');
                     
-                    // Get unique values for the selected column
-                    const uniqueValues = [...new Set(originalData.map(row => row[selectedColumn]))].filter(Boolean);
+                    // Get unique values for the selected column, including blank values
+                    const uniqueValues = [...new Set(originalData.map(row => 
+                        row[selectedColumn] === null || row[selectedColumn] === undefined || 
+                        row[selectedColumn].toString().trim() === '' ? '(Blank)' : row[selectedColumn]
+                    ))].filter(val => val !== undefined);
                     
                     // Clear previous dropdown
                     const dropdown = document.getElementById('nameSearchDropdown');
@@ -542,11 +549,11 @@
                     // Create new options
                     uniqueValues.forEach(value => {
                         const option = document.createElement('div');
-                        option.className = 'combo-box-option';
+                        option.className = value === '(Blank)' ? 'combo-box-option blank-option' : 'combo-box-option';
                         option.textContent = value;
-                        option.dataset.value = value;
+                        option.dataset.value = value === '(Blank)' ? '' : value;
                         option.addEventListener('click', () => {
-                            document.getElementById('nameSearchInput').value = value;
+                            document.getElementById('nameSearchInput').value = value === '(Blank)' ? '' : value;
                             dropdown.classList.remove('active');
                         });
                         dropdown.appendChild(option);
@@ -561,7 +568,7 @@
                         
                         options.forEach(option => {
                             const text = option.textContent.toLowerCase();
-                            if (text.includes(searchTerm)) {
+                            if (text.includes(searchTerm) || searchTerm === '') {
                                 option.style.display = 'block';
                             } else {
                                 option.style.display = 'none';
@@ -755,15 +762,8 @@
                     }
                     if (header === 'Amount') {
                         totalAmount += parseFloat(row[header]) || 0;
-                    }
-                    if (header === 'Received') {
-                        totalReceived += parseFloat(row[header]) || 0;
-                    }
-                    if (header === 'Total') {
-                        totalTotal += parseFloat(row[header]) || 0;
-                    }
-                    if (header === 'Paid') {
-                        totalPaid += parseFloat(row[header]) || 0;
+                    
+                    
                     }
                 });
                 tbody.appendChild(tr);
@@ -847,15 +847,6 @@
                     } else if (header === 'Amount') {
                         td.className = 'amount-column';
                         td.textContent = totalAmount.toFixed(2);
-                    } else if (header === 'Received') {
-                        td.className = 'amount-column';
-                        td.textContent = totalReceived.toFixed(2);
-                    } else if (header === 'Total') {
-                        td.className = 'amount-column';
-                        td.textContent = totalTotal.toFixed(2);
-                    } else if (header === 'Paid') {
-                        td.className = 'amount-column';
-                        td.textContent = totalPaid.toFixed(2);
                     } else {
                         td.textContent = '';
                     }
@@ -992,9 +983,16 @@
                 });
             } else {
                 const searchTerm = document.getElementById('nameSearchInput').value;
-                filteredData = originalData.filter(row =>
-                    row[column] && row[column].toString() === searchTerm
-                );
+                filteredData = originalData.filter(row => {
+                    const cellValue = row[column] || ''; // Handle undefined/null values
+                    if (searchTerm === '') {
+                        // If search term is empty, show rows with empty/blank values
+                        return cellValue.toString().trim() === '';
+                    } else {
+                        // Otherwise, show exact matches
+                        return cellValue.toString() === searchTerm;
+                    }
+                });
 
                 // Remove blank/empty columns and columns with all zeros from filtered data
                 const nonEmptyColumns = new Set();
