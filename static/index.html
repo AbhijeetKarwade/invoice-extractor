@@ -48,7 +48,6 @@
         }
         .date-range-container.active { display: grid; }
         
-        /* Sorting styles */
         .sortable-header {
             cursor: pointer;
             position: relative;
@@ -74,11 +73,8 @@
             border-top: 5px solid #333;
             opacity: 1;
         }
-        .sortable-header:hover::after {
-            opacity: 0.7;
-        }
+        .sortable-header:hover::after { opacity: 0.7; }
         
-        /* Combo box styles */
         .combo-box {
             position: relative;
             display: inline-block;
@@ -103,25 +99,15 @@
             z-index: 1000;
             display: none;
         }
-        .combo-box-options.active {
-            display: block;
-        }
+        .combo-box-options.active { display: block; }
         .combo-box-option {
             padding: 0.5rem;
             cursor: pointer;
         }
-        .combo-box-option:hover {
-            background-color: #f0f0f0;
-        }
-        .combo-box-option.selected {
-            background-color: #e0e0e0;
-        }
-        .combo-box-option.blank-option {
-            font-style: italic;
-            color: #666;
-        }
+        .combo-box-option:hover { background-color: #f0f0f0; }
+        .combo-box-option.selected { background-color: #e0e0e0; }
+        .combo-box-option.blank-option { font-style: italic; color: #666; }
 
-        /* Section header styles */
         .section-header {
             background-color: #3b82f6;
             color: white;
@@ -133,7 +119,6 @@
             text-align: center;
         }
 
-        /* Control panel styles */
         .control-panel-section {
             background-color: white;
             padding: 0.5rem;
@@ -141,7 +126,6 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
-        /* Loading spinner */
         .spinner {
             display: inline-block;
             width: 1rem;
@@ -151,11 +135,8 @@
             border-top-color: white;
             animation: spin 1s ease-in-out infinite;
         }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Date range active indicator */
         .date-range-active {
             background-color: #f0f9ff;
             border: 1px solid #3b82f6;
@@ -166,48 +147,15 @@
             display: none;
         }
 
-        /* Summary row styles */
-        .total-row td {
-            font-weight: bold;
-            background-color: #f0f0f0;
-        }
-        .subtotal-row td {
-            font-weight: bold;
-            background-color: #e0e0e0;
-            text-align: right;
-        }
-        .final-total-row td {
-            font-weight: bold;
-            background-color: #d0d0d0;
-            text-align: right;
-        }
-        .description-row td {
-            font-style: italic;
-            color: #666;
-            font-family: "Calibri", "Calibri Body", sans-serif;
-        }
-        .amount-column {
-            text-align: right;
-        }
-        
-        /* Selected row style */
-        .selected-row {
-            background-color: #e6f7ff !important;
-        }
-        
-        /* Checkbox styles */
-        .row-checkbox {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-        }
-        
-        /* Select all checkbox */
-        .select-all-checkbox {
-            margin-right: 5px;
-        }
+        .total-row td { font-weight: bold; background-color: #f0f0f0; }
+        .subtotal-row td { font-weight: bold; background-color: #e0e0e0; text-align: right; }
+        .final-total-row td { font-weight: bold; background-color: #d0d0d0; text-align: right; }
+        .description-row td { font-style: italic; color: #666; }
+        .amount-column { text-align: right; }
+        .selected-row { background-color: #e6f7ff !important; }
+        .row-checkbox { width: 18px; height: 18px; cursor: pointer; }
+        .select-all-checkbox { margin-right: 5px; }
 
-        /* Toggle switch styles */
         .sr-only {
             position: absolute;
             width: 1px;
@@ -220,25 +168,14 @@
             border-width: 0;
         }
 
-        .toggle-container {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
+        .toggle-container { display: flex; align-items: center; gap: 0.5rem; }
         .toggle-switch {
             position: relative;
             display: inline-block;
             width: 60px;
             height: 28px;
         }
-
-        .toggle-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
         .toggle-slider {
             position: absolute;
             cursor: pointer;
@@ -250,7 +187,6 @@
             transition: .4s;
             border-radius: 34px;
         }
-
         .toggle-slider:before {
             position: absolute;
             content: "";
@@ -262,21 +198,10 @@
             transition: .4s;
             border-radius: 50%;
         }
-
-        input:checked + .toggle-slider {
-            background-color: #10b981;
-        }
-
-        input:checked + .toggle-slider:before {
-            transform: translateX(32px);
-        }
-
-        .toggle-label {
-            font-size: 0.875rem;
-            color: #333;
-        }
+        input:checked + .toggle-slider { background-color: #10b981; }
+        input:checked + .toggle-slider:before { transform: translateX(32px); }
+        .toggle-label { font-size: 0.875rem; color: #333; }
         
-        /* Sheet info styles */
         .sheet-info {
             font-size: 0.75rem;
             margin-top: 0.5rem;
@@ -284,23 +209,15 @@
             background-color: #f8fafc;
             border-radius: 0.25rem;
         }
-        .sheet-info-title {
-            font-weight: 600;
-            margin-bottom: 0.25rem;
-        }
-        .sheet-info-row {
-            display: flex;
-            justify-content: space-between;
-        }
+        .sheet-info-title { font-weight: 600; margin-bottom: 0.25rem; }
+        .sheet-info-row { display: flex; justify-content: space-between; }
     </style>
 </head>
 <body class="p-4 bg-gray-100">
     <h1 class="text-2xl font-bold mb-4">G Printer</h1>
     
-    <!-- Top Control Panel -->
     <div class="bg-white p-4 rounded shadow mb-6">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <!-- File Input -->
             <div>
                 <div class="section-header">Load File</div>
                 <div class="control-panel-section">
@@ -327,7 +244,6 @@
                 </div>
             </div>
 
-            <!-- Search -->
             <div>
                 <div class="section-header">Search</div>
                 <div class="control-panel-section">
@@ -355,7 +271,6 @@
                 </div>
             </div>
 
-            <!-- Column Selection -->
             <div>
                 <div class="section-header">Select columns</div>
                 <div class="control-panel-section">
@@ -367,7 +282,6 @@
             </div>
         </div>
 
-        <!-- Export Buttons -->
         <div class="flex flex-wrap gap-2 mt-4 items-center">
             <div class="toggle-container">
                 <label class="toggle-switch">
@@ -382,7 +296,6 @@
         </div>
     </div>
 
-    <!-- Filtered Rows Table -->
     <h2 class="text-xl font-semibold mt-6">Filtered Rows</h2>
     <div class="table-container">
         <table id="matchingRowsTable" class="bg-white"></table>
@@ -408,7 +321,6 @@
                 return;
             }
 
-            // Show loading state
             const loadButtonText = document.getElementById('loadButtonText');
             const loadSpinner = document.getElementById('loadSpinner');
             const loadButton = document.getElementById('loadFile');
@@ -417,11 +329,9 @@
             loadButtonText.textContent = 'Processing...';
             loadSpinner.classList.remove('hidden');
 
-            // Create FormData object to send the file
             const formData = new FormData();
             formData.append('file', file);
 
-            // Send the file to the server for processing
             fetch('/upload', {
                 method: 'POST',
                 body: formData
@@ -439,7 +349,6 @@
                     throw new Error(responseData.error);
                 }
 
-                // Process the returned data directly
                 data = responseData.data || [];
                 headers = responseData.headers || (data.length > 0 ? Object.keys(data[0]) : []);
                 
@@ -447,7 +356,6 @@
                     throw new Error('No data found in the processed file');
                 }
                 
-                // Store the data
                 originalData = [...data];
                 filteredData = [...data];
                 selectedColumns = [...headers];
@@ -459,7 +367,6 @@
                 updateMatchingRowsTable();
                 populateDropdowns();
                 
-                // Display sheet information
                 const sheetInfoDiv = document.getElementById('sheetInfo');
                 sheetInfoDiv.classList.remove('hidden');
                 document.getElementById('customReportRows').textContent = 
@@ -476,7 +383,6 @@
                 console.error('Error:', error);
                 alert('An error occurred: ' + error.message);
                 
-                // Clear any existing data
                 data = [];
                 headers = [];
                 originalData = [];
@@ -488,14 +394,12 @@
                 document.getElementById('printToggleLabel').textContent = 'Print All';
             })
             .finally(() => {
-                // Reset button state
                 loadButton.disabled = false;
                 loadButtonText.textContent = 'Upload';
                 loadSpinner.classList.add('hidden');
             });
         });
         
-        // Populate Dropdowns
         function populateDropdowns() {
             const nameColumn = document.getElementById('nameColumn');
             const columnSelect = document.getElementById('columnSelect');
@@ -528,7 +432,6 @@
                     dateRangeContainer.classList.add('active');
                     dateRangeActive.classList.add('hidden');
                     
-                    // Clear date inputs when switching to date column
                     document.getElementById('dateFrom').value = '';
                     document.getElementById('dateTo').value = '';
                 } else {
@@ -536,17 +439,14 @@
                     dateRangeContainer.classList.remove('active');
                     dateRangeActive.classList.add('hidden');
                     
-                    // Get unique values for the selected column, including blank values
                     const uniqueValues = [...new Set(originalData.map(row => 
                         row[selectedColumn] === null || row[selectedColumn] === undefined || 
                         row[selectedColumn].toString().trim() === '' ? '(Blank)' : row[selectedColumn]
                     ))].filter(val => val !== undefined);
                     
-                    // Clear previous dropdown
                     const dropdown = document.getElementById('nameSearchDropdown');
                     dropdown.innerHTML = '';
                     
-                    // Create new options
                     uniqueValues.forEach(value => {
                         const option = document.createElement('div');
                         option.className = value === '(Blank)' ? 'combo-box-option blank-option' : 'combo-box-option';
@@ -559,7 +459,6 @@
                         dropdown.appendChild(option);
                     });
                     
-                    // Setup input event for filtering
                     const input = document.getElementById('nameSearchInput');
                     input.value = '';
                     input.addEventListener('input', function() {
@@ -578,12 +477,10 @@
                         dropdown.classList.add('active');
                     });
                     
-                    // Show dropdown when input is focused
                     input.addEventListener('focus', () => {
                         dropdown.classList.add('active');
                     });
                     
-                    // Hide dropdown when clicking outside
                     document.addEventListener('click', (e) => {
                         if (!textSearchContainer.contains(e.target)) {
                             dropdown.classList.remove('active');
@@ -593,7 +490,64 @@
             });
         }
 
-        // Sort data function
+        function calculateBalanceAdjustment(row) {
+            const type = (row['Type'] || row['Txn Type'] || 'Sale').toLowerCase();
+            let adjustment = 0;
+
+            if (type.includes('sale')) {
+                adjustment = parseFloat(row['Balance'] || 0);
+            } else if (type.includes('payment-out') || type.includes('party to party [paid]')) {
+                adjustment = parseFloat(row['Paid'] || 0);
+            } else if (type.includes('payment-in') || type.includes('party to party [received]')) {
+                adjustment = -1 * parseFloat(row['Received'] || 0);
+            } else if (type.includes('purchase') || type.includes('credit note')) {
+                adjustment = -1 * parseFloat(row['Balance'] || 0);
+            }
+
+            return adjustment;
+        }
+
+        function calculateRunningBalances(data) {
+            const transactions = {};
+            let runningBalance = 0;
+
+            const openingBalanceRow = data.find(row => row['Ref_No'] === 'Opening Balance');
+            if (openingBalanceRow) {
+                runningBalance = parseFloat(openingBalanceRow['Balance'] || 0);
+            }
+
+            data.forEach(row => {
+                if (row['Ref_No'] === 'Opening Balance') return;
+                
+                const key = `${row['date']}_${row['Ref_No']}`;
+                
+                if (!transactions[key]) {
+                    transactions[key] = {
+                        adjustment: calculateBalanceAdjustment(row),
+                        rows: []
+                    };
+                }
+                transactions[key].rows.push(row);
+            });
+
+            const sortedKeys = Object.keys(transactions).sort((a, b) => {
+                const dateA = new Date(a.split('_')[0].split('/').reverse().join('/'));
+                const dateB = new Date(b.split('_')[0].split('/').reverse().join('/'));
+                return dateA - dateB;
+            });
+
+            sortedKeys.forEach(key => {
+                const group = transactions[key];
+                runningBalance += group.adjustment;
+                
+                group.rows.forEach(row => {
+                    row['Est. Balance'] = runningBalance;
+                });
+            });
+
+            return data;
+        }
+
         function sortData(column) {
             if (currentSortColumn === column) {
                 sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
@@ -606,19 +560,16 @@
                 const valA = a[column];
                 const valB = b[column];
                 
-                // Handle numbers
                 if (!isNaN(valA) && !isNaN(valB)) {
                     return sortDirection === 'asc' ? valA - valB : valB - valA;
                 }
                 
-                // Handle dates
                 const dateA = new Date(valA);
                 const dateB = new Date(valB);
                 if (!isNaN(dateA.getTime()) && !isNaN(dateB.getTime())) {
                     return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
                 }
                 
-                // Default to string comparison
                 const strA = String(valA || '').toLowerCase();
                 const strB = String(valB || '').toLowerCase();
                 return sortDirection === 'asc' 
@@ -629,7 +580,6 @@
             updateMatchingRowsTable();
         }
 
-        // Toggle row selection
         function toggleRowSelection(index, checkbox) {
             const row = document.querySelector(`#matchingRowsTable tr[data-index="${index}"]`);
             if (checkbox.checked) {
@@ -641,7 +591,6 @@
             }
         }
 
-        // Select all rows
         function selectAllRows(selectAllCheckbox) {
             const checkboxes = document.querySelectorAll('#matchingRowsTable tbody input.row-checkbox');
             
@@ -664,256 +613,230 @@
             }
         }
 
-        // Update Matching Rows Table with sorting and summary rows
         function updateMatchingRowsTable() {
-            const table = document.getElementById('matchingRowsTable');
-            const showAllBtn = document.getElementById('showAllRows');
-            table.innerHTML = '';
-            
-            if (filteredData.length === 0) {
-                showAllBtn.classList.add('hidden');
-                return;
-            }
+    const table = document.getElementById('matchingRowsTable');
+    const showAllBtn = document.getElementById('showAllRows');
+    table.innerHTML = '';
+    
+    if (filteredData.length === 0) {
+        showAllBtn.classList.add('hidden');
+        return;
+    }
 
-            const thead = document.createElement('thead');
+    // First calculate running balances properly
+    const dataWithBalances = calculateRunningBalances(filteredData);
+    const rowsToShow = showingAllRows ? dataWithBalances : dataWithBalances.slice(0, 5);
+
+    const thead = document.createElement('thead');
+    const tr = document.createElement('tr');
+    
+    // Add select all checkbox column
+    const thSelect = document.createElement('th');
+    const selectAllCheckbox = document.createElement('input');
+    selectAllCheckbox.type = 'checkbox';
+    selectAllCheckbox.className = 'row-checkbox select-all-checkbox';
+    selectAllCheckbox.addEventListener('change', () => selectAllRows(selectAllCheckbox));
+    thSelect.appendChild(selectAllCheckbox);
+    tr.appendChild(thSelect);
+    
+    // Add sequential number column
+    const thNum = document.createElement('th');
+    thNum.textContent = '#';
+    thNum.className = 'sortable-header';
+    tr.appendChild(thNum);
+    
+    const displayColumns = selectedColumns.length > 0 ? selectedColumns : headers;
+    
+    displayColumns.forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header === 'date' ? 'Date' : header;
+        th.className = 'sortable-header';
+        
+        if (header === currentSortColumn) {
+            th.classList.add(sortDirection);
+        }
+        
+        th.addEventListener('click', () => {
+            sortData(header);
+        });
+        
+        tr.appendChild(th);
+    });
+    thead.appendChild(tr);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    
+    // Group transactions by Ref_No and date to calculate totals correctly
+    const groupedTransactions = {};
+    dataWithBalances.forEach(row => {
+        const key = `${row['date']}_${row['Ref_No']}`;
+        if (!groupedTransactions[key]) {
+            groupedTransactions[key] = {
+                rows: [],
+                total: 0,
+                received: parseFloat(row['Received'] || 0),
+                paid: parseFloat(row['Paid'] || 0),
+                balance: parseFloat(row['Balance'] || 0),
+                estBalance: parseFloat(row['Est. Balance'] || 0)
+            };
+        }
+        groupedTransactions[key].rows.push(row);
+        groupedTransactions[key].total += parseFloat(row['Amount'] || 0);
+    });
+
+    // Calculate the final running balance
+    let finalBalance = 0;
+    Object.values(groupedTransactions).forEach(group => {
+        finalBalance = group.estBalance;
+    });
+
+    // Now display the rows
+    let rowIndex = 0;
+    Object.keys(groupedTransactions).forEach(key => {
+        const group = groupedTransactions[key];
+        group.rows.forEach((row, itemIndex) => {
             const tr = document.createElement('tr');
+            tr.dataset.index = rowIndex;
             
-            // Add select all checkbox column
-            const thSelect = document.createElement('th');
-            const selectAllCheckbox = document.createElement('input');
-            selectAllCheckbox.type = 'checkbox';
-            selectAllCheckbox.className = 'row-checkbox select-all-checkbox';
-            selectAllCheckbox.addEventListener('change', () => selectAllRows(selectAllCheckbox));
-            thSelect.appendChild(selectAllCheckbox);
-            tr.appendChild(thSelect);
+            // Add checkbox for row selection
+            const tdSelect = document.createElement('td');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'row-checkbox';
+            checkbox.dataset.index = rowIndex;
+            checkbox.addEventListener('change', (e) => toggleRowSelection(rowIndex, e.target));
+            if (selectedRows.has(rowIndex)) {
+                checkbox.checked = true;
+                tr.classList.add('selected-row');
+            }
+            tdSelect.appendChild(checkbox);
+            tr.appendChild(tdSelect);
             
-            // Add sequential number column
-            const thNum = document.createElement('th');
-            thNum.textContent = '#';
-            thNum.className = 'sortable-header';
-            tr.appendChild(thNum);
-            
-            const displayColumns = selectedColumns.length > 0 ? selectedColumns : headers;
+            // Add sequential number
+            const tdNum = document.createElement('td');
+            tdNum.textContent = rowIndex + 1;
+            tr.appendChild(tdNum);
             
             displayColumns.forEach(header => {
-                const th = document.createElement('th');
-                th.textContent = header === 'date' ? 'Date' : header;
-                th.className = 'sortable-header';
-                
-                if (header === currentSortColumn) {
-                    th.classList.add(sortDirection);
-                }
-                
-                th.addEventListener('click', () => {
-                    sortData(header);
-                });
-                
-                tr.appendChild(th);
-            });
-            thead.appendChild(tr);
-            table.appendChild(thead);
-
-            const tbody = document.createElement('tbody');
-            const rowsToShow = showingAllRows ? filteredData : filteredData.slice(0, 5);
-            
-            // Calculate totals for the visible rows
-            let totalQuantity = 0;
-            let totalAmount = 0;
-            let totalReceived = 0;
-            let totalTotal = 0;
-            let totalPaid = 0;
-
-            rowsToShow.forEach((row, index) => {
-                const tr = document.createElement('tr');
-                tr.dataset.index = index;
-                
-                // Add checkbox for row selection
-                const tdSelect = document.createElement('td');
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.className = 'row-checkbox';
-                checkbox.dataset.index = index;
-                checkbox.addEventListener('change', (e) => toggleRowSelection(index, e.target));
-                if (selectedRows.has(index)) {
-                    checkbox.checked = true;
-                    tr.classList.add('selected-row');
-                }
-                tdSelect.appendChild(checkbox);
-                tr.appendChild(tdSelect);
-                
-                // Add sequential number
-                const tdNum = document.createElement('td');
-                tdNum.textContent = index + 1;
-                tr.appendChild(tdNum);
-                
-                displayColumns.forEach(header => {
-                    const td = document.createElement('td');
-                    if (header === 'Amount' || header === 'Received' || header === 'Total' || header === 'Paid') {
-                        td.className = 'amount-column';
+                const td = document.createElement('td');
+                if (header === 'Amount' || header === 'Received' || header === 'Total' || 
+                    header === 'Paid' || header === 'Balance' || header === 'Est. Balance') {
+                    td.className = 'amount-column';
+                    // For grouped rows, only show the full values on the first row
+                    if (itemIndex === 0 || !['Total', 'Received', 'Paid', 'Balance', 'Est. Balance'].includes(header)) {
                         td.textContent = row[header] ? parseFloat(row[header]).toFixed(2) : '0.00';
                     } else {
-                        td.textContent = row[header] || '';
+                        td.textContent = ''; // Leave empty for subsequent rows of same transaction
                     }
-                    tr.appendChild(td);
-                    
-                    // Sum quantities and amounts
-                    if (header === 'Quantity') {
-                        totalQuantity += parseFloat(row[header]) || 0;
-                    }
-                    if (header === 'Amount') {
-                        totalAmount += parseFloat(row[header]) || 0;
-                    
-                    
-                    }
-                });
-                tbody.appendChild(tr);
-            });
-
-            // Group transactions by Ref_No for running balance calculation
-            const transactions = {};
-            filteredData.forEach(row => {
-                const refNo = row['Ref_No'] || 'Opening Balance';
-                if (!transactions[refNo]) {
-                    transactions[refNo] = {
-                        date: row['date'],
-                        type: row['Txn Type'] || 'Sale',
-                        refNo: refNo,
-                        total: 0,
-                        received: 0,
-                        paid: 0,
-                        balance: 0
-                    };
+                } else {
+                    td.textContent = row[header] || '';
                 }
-                
-                // Use 'Total' column if available, otherwise fall back to 'Amount'
-                const totalValue = row['Total'] !== undefined ? parseFloat(row['Total'] || 0) : parseFloat(row['Amount'] || 0);
-                transactions[refNo].total += totalValue;
-                transactions[refNo].received += parseFloat(row['Received'] || 0);
-                transactions[refNo].paid += parseFloat(row['Paid'] || 0);
-                transactions[refNo].balance = transactions[refNo].total - (transactions[refNo].received + transactions[refNo].paid);
+                tr.appendChild(td);
             });
+            tbody.appendChild(tr);
+            rowIndex++;
+        });
+    });
 
-            // Calculate opening balance and running balance
-            let openingBalance = 0;
-            if (transactions['Opening Balance']) {
-                const openingTotal = transactions['Opening Balance'].total;
-                const openingReceived = transactions['Opening Balance'].received;
-                const openingPaid = transactions['Opening Balance'].paid;
-                openingBalance = openingTotal - (openingReceived + openingPaid);
-                delete transactions['Opening Balance'];
-            }
+    // Add summary rows
+    const hasQuantity = displayColumns.includes('Quantity');
+    const hasAmount = displayColumns.includes('Amount');
+    const hasReceived = displayColumns.includes('Received');
+    const hasTotal = displayColumns.includes('Total');
+    const hasPaid = displayColumns.includes('Paid');
 
-            const sortedTransactions = Object.values(transactions).sort((a, b) => {
-                const dateA = a.date ? new Date(a.date.split('/').reverse().join('/')) : new Date(0);
-                const dateB = b.date ? new Date(b.date.split('/').reverse().join('/')) : new Date(0);
-                return dateA - dateB;
-            });
-
-            let runningBalance = openingBalance;
-            let grandTotal = runningBalance;
+    if (hasQuantity || hasAmount || hasReceived || hasTotal || hasPaid) {
+        const totalRow = document.createElement('tr');
+        totalRow.className = 'total-row';
+        
+        const tdSelect = document.createElement('td');
+        totalRow.appendChild(tdSelect);
+        
+        const tdNum = document.createElement('td');
+        tdNum.textContent = '';
+        totalRow.appendChild(tdNum);
+        
+        displayColumns.forEach(header => {
+            const td = document.createElement('td');
             
-            sortedTransactions.forEach(txn => {
-                runningBalance += txn.balance;
-                grandTotal = runningBalance;
-            });
-
-            // Add summary rows if we have quantity, amount, or received columns
-            const hasQuantity = displayColumns.includes('Quantity');
-            const hasAmount = displayColumns.includes('Amount');
-            const hasReceived = displayColumns.includes('Received');
-            const hasTotal = displayColumns.includes('Total');
-            const hasPaid = displayColumns.includes('Paid');
-
-            if (hasQuantity || hasAmount || hasReceived || hasTotal || hasPaid) {
-                // Total row for Quantity, Amount, Received
-                const totalRow = document.createElement('tr');
-                totalRow.className = 'total-row';
-                
-                // Add empty checkbox column
-                const tdSelect = document.createElement('td');
-                totalRow.appendChild(tdSelect);
-                
-                // Add # column
-                const tdNum = document.createElement('td');
-                tdNum.textContent = '';
-                totalRow.appendChild(tdNum);
-                
-                // Add cells for each column
-                displayColumns.forEach(header => {
-                    const td = document.createElement('td');
-                    
-                    if (header === 'Quantity') {
-                        td.textContent = totalQuantity.toFixed(2);
-                    } else if (header === 'Amount') {
-                        td.className = 'amount-column';
-                        td.textContent = totalAmount.toFixed(2);
-                    } else {
-                        td.textContent = '';
-                    }
-                    
-                    totalRow.appendChild(td);
+            if (header === 'Quantity') {
+                // Calculate total quantity
+                let totalQty = 0;
+                dataWithBalances.forEach(row => {
+                    totalQty += parseFloat(row['Quantity'] || 0);
                 });
-                
-                tbody.appendChild(totalRow);
-            }
-
-            // Description row
-            const descRow = document.createElement('tr');
-            descRow.className = 'description-row';
-            const descCell = document.createElement('td');
-            descCell.colSpan = displayColumns.length + 2;
-            let customDescriptionText = '';
-            const firstWithDescription = filteredData.find(row => row['Description_x']);
-            if (firstWithDescription) {
-                customDescriptionText = firstWithDescription['Description_x'];
-            }
-            descCell.textContent = `Description: ${customDescriptionText}`;
-            descRow.appendChild(descCell);
-            tbody.appendChild(descRow);
-
-            // Sub Total row (running balance)
-            if ((hasAmount || hasTotal) && (hasReceived || hasPaid)) {
-                const subtotalRow = document.createElement('tr');
-                subtotalRow.className = 'subtotal-row';
-                const subtotalCell = document.createElement('td');
-                subtotalCell.colSpan = displayColumns.length + 1;
-                subtotalCell.textContent = 'Sub Total:';
-                subtotalRow.appendChild(subtotalCell);
-                
-                const subtotalValueCell = document.createElement('td');
-                subtotalValueCell.className = 'amount-column';
-                subtotalValueCell.textContent = grandTotal.toFixed(2);
-                subtotalRow.appendChild(subtotalValueCell);
-                tbody.appendChild(subtotalRow);
-            }
-
-            // Final Total row (same as Sub Total in this case)
-            if ((hasAmount || hasTotal) && (hasReceived || hasPaid)) {
-                const finalTotalRow = document.createElement('tr');
-                finalTotalRow.className = 'final-total-row';
-                const finalTotalCell = document.createElement('td');
-                finalTotalCell.colSpan = displayColumns.length + 1;
-                finalTotalCell.textContent = 'Total:';
-                finalTotalRow.appendChild(finalTotalCell);
-                
-                const finalTotalValueCell = document.createElement('td');
-                finalTotalValueCell.className = 'amount-column';
-                finalTotalValueCell.textContent = grandTotal.toFixed(2);
-                finalTotalRow.appendChild(finalTotalValueCell);
-                tbody.appendChild(finalTotalRow);
+                td.textContent = totalQty.toFixed(2);
+            } else if (header === 'Amount') {
+                // Calculate total amount
+                let totalAmt = 0;
+                dataWithBalances.forEach(row => {
+                    totalAmt += parseFloat(row['Amount'] || 0);
+                });
+                td.className = 'amount-column';
+                td.textContent = totalAmt.toFixed(2);
+            } else {
+                td.textContent = '';
             }
             
-            table.appendChild(tbody);
+            totalRow.appendChild(td);
+        });
+        
+        tbody.appendChild(totalRow);
+    }
 
-            if (filteredData.length > 5 && !showingAllRows) {
-                showAllBtn.classList.remove('hidden');
-                showAllBtn.textContent = `Show All (${filteredData.length} rows)`;
-            } else {
-                showAllBtn.classList.add('hidden');
-            }
-        }
+    // Description row
+    const descRow = document.createElement('tr');
+    descRow.className = 'description-row';
+    const descCell = document.createElement('td');
+    descCell.colSpan = displayColumns.length + 2;
+    let customDescriptionText = '';
+    const firstWithDescription = filteredData.find(row => row['Description_x']);
+    if (firstWithDescription) {
+        customDescriptionText = firstWithDescription['Description_x'];
+    }
+    descCell.textContent = `Description: ${customDescriptionText}`;
+    descRow.appendChild(descCell);
+    tbody.appendChild(descRow);
 
-        // Search by Name or Date with proper DD/MM/YYYY handling
+    // Sub Total and Total rows (now showing the final running balance)
+    if ((hasAmount || hasTotal) && (hasReceived || hasPaid)) {
+        const subtotalRow = document.createElement('tr');
+        subtotalRow.className = 'subtotal-row';
+        const subtotalCell = document.createElement('td');
+        subtotalCell.colSpan = displayColumns.length + 1;
+        subtotalCell.textContent = 'Sub Total:';
+        subtotalRow.appendChild(subtotalCell);
+        
+        const subtotalValueCell = document.createElement('td');
+        subtotalValueCell.className = 'amount-column';
+        subtotalValueCell.textContent = finalBalance.toFixed(2);
+        subtotalRow.appendChild(subtotalValueCell);
+        tbody.appendChild(subtotalRow);
+
+        const finalTotalRow = document.createElement('tr');
+        finalTotalRow.className = 'final-total-row';
+        const finalTotalCell = document.createElement('td');
+        finalTotalCell.colSpan = displayColumns.length + 1;
+        finalTotalCell.textContent = 'Total:';
+        finalTotalRow.appendChild(finalTotalCell);
+        
+        const finalTotalValueCell = document.createElement('td');
+        finalTotalValueCell.className = 'amount-column';
+        finalTotalValueCell.textContent = finalBalance.toFixed(2);
+        finalTotalRow.appendChild(finalTotalValueCell);
+        tbody.appendChild(finalTotalRow);
+    }
+    
+    table.appendChild(tbody);
+
+    if (filteredData.length > 5 && !showingAllRows) {
+        showAllBtn.classList.remove('hidden');
+        showAllBtn.textContent = `Show All (${filteredData.length} rows)`;
+    } else {
+        showAllBtn.classList.add('hidden');
+    }
+}
         document.getElementById('searchByName').addEventListener('click', () => {
             const column = document.getElementById('nameColumn').value;
             const isDateColumn = column.toLowerCase().includes('date');
@@ -927,7 +850,6 @@
                     return;
                 }
                 
-                // Show active date range
                 const dateRangeActive = document.getElementById('dateRangeActive');
                 dateRangeActive.textContent = `Active range: ${dateFrom || 'Start'} to ${dateTo || 'End'}`;
                 dateRangeActive.classList.remove('hidden');
@@ -936,18 +858,15 @@
                     const cellValue = row[column];
                     if (!cellValue) return false;
                     
-                    // Parse the cell value as a date in DD/MM/YYYY format
                     let cellDate;
                     if (cellValue instanceof Date) {
                         cellDate = new Date(cellValue);
                     } else if (typeof cellValue === 'string' || typeof cellValue === 'number') {
-                        // Handle string dates in DD/MM/YYYY format
                         if (typeof cellValue === 'string' && cellValue.includes('/')) {
                             const parts = cellValue.split('/');
                             if (parts.length === 3) {
-                                // Force DD/MM/YYYY interpretation
                                 const day = parseInt(parts[0], 10);
-                                const month = parseInt(parts[1], 10) - 1; // months are 0-indexed
+                                const month = parseInt(parts[1], 10) - 1;
                                 const year = parseInt(parts[2], 10);
                                 cellDate = new Date(year, month, day);
                             } else {
@@ -962,16 +881,13 @@
                     
                     if (isNaN(cellDate.getTime())) return false;
                     
-                    // Convert the filter dates from YYYY-MM-DD to Date objects
                     const fromDate = dateFrom ? new Date(dateFrom) : null;
                     const toDate = dateTo ? new Date(dateTo) : null;
                     
-                    // Reset time components for accurate date comparison
                     if (fromDate) fromDate.setHours(0, 0, 0, 0);
                     if (toDate) toDate.setHours(23, 59, 59, 999);
                     cellDate.setHours(0, 0, 0, 0);
                     
-                    // Compare dates
                     if (fromDate && toDate) {
                         return cellDate >= fromDate && cellDate <= toDate;
                     } else if (fromDate) {
@@ -984,20 +900,16 @@
             } else {
                 const searchTerm = document.getElementById('nameSearchInput').value;
                 filteredData = originalData.filter(row => {
-                    const cellValue = row[column] || ''; // Handle undefined/null values
+                    const cellValue = row[column] || '';
                     if (searchTerm === '') {
-                        // If search term is empty, show rows with empty/blank values
                         return cellValue.toString().trim() === '';
                     } else {
-                        // Otherwise, show exact matches
                         return cellValue.toString() === searchTerm;
                     }
                 });
 
-                // Remove blank/empty columns and columns with all zeros from filtered data
                 const nonEmptyColumns = new Set();
                 
-                // First, find all columns that have at least one non-empty/non-zero value
                 headers.forEach(header => {
                     const hasData = filteredData.some(row => {
                         const value = row[header];
@@ -1013,10 +925,8 @@
                     }
                 });
 
-                // Update selected columns to only include non-empty and non-zero ones
                 selectedColumns = headers.filter(header => nonEmptyColumns.has(header));
                 
-                // Update the column select dropdown to reflect the new selection
                 const columnSelect = document.getElementById('columnSelect');
                 Array.from(columnSelect.options).forEach(option => {
                     option.selected = selectedColumns.includes(option.value);
@@ -1034,13 +944,11 @@
             updateMatchingRowsTable();
         });
 
-        // Toggle showing all rows
         document.getElementById('showAllRows').addEventListener('click', () => {
             showingAllRows = true;
             updateMatchingRowsTable();
         });
 
-        // Apply Column Filters
         document.getElementById('applyFilters').addEventListener('click', () => {
             selectedColumns = Array.from(document.getElementById('columnSelect').selectedOptions).map(opt => opt.value);
             
@@ -1052,18 +960,14 @@
             updateMatchingRowsTable();
         });
 
-        
-        // Print Toggle Switch
         document.getElementById('printToggle').addEventListener('change', function() {
             document.getElementById('printToggleLabel').textContent = this.checked ? 'Print Selected' : 'Print All';
         });
 
-        // Execute Print
         document.getElementById('executePrint').addEventListener('click', () => {
             const printToggle = document.getElementById('printToggle');
             
             if (printToggle.checked) {
-                // Print Selected
                 if (selectedRows.size === 0) {
                     alert('No rows selected. Please select rows to print.');
                     return;
@@ -1071,7 +975,6 @@
                 const selectedData = Array.from(selectedRows).map(index => filteredData[index]);
                 prepareAndOpenPrintView(selectedData);
             } else {
-                // Print All
                 if (filteredData.length === 0) {
                     alert('No filtered data available. Please apply filters first.');
                     return;
@@ -1080,29 +983,23 @@
             }
         });
 
-        // Prepare data and open print view
         function prepareAndOpenPrintView(dataToPrint) {
             const displayColumns = selectedColumns.length > 0 ? selectedColumns : headers;
             
-            // Find the first row with Party Name
             const partyRow = dataToPrint.find(row => row['Party Name_y']);
             let partyInfo = { name: '', mobile: '' };
             
             if (partyRow) {
                 const partyString = partyRow['Party Name_y'];
-                // Extract name and mobile
                 const mobileMatch = partyString.match(/\d{10}/);
                 partyInfo.mobile = mobileMatch ? mobileMatch[0] : '';
                 
-                // Extract name by removing the mobile part and parentheses
                 partyInfo.name = partyString.replace(/\(.*\d{10}.*\)/, '').trim();
                 if (!partyInfo.name) {
-                    // If name is empty after removal, use the full string without mobile
                     partyInfo.name = partyString.replace(/\d{10}/, '').replace(/[()]/g, '').trim();
                 }
             }
             
-            // Get date range from the date filter inputs
             const dateRange = { from: '', to: '' };
             const dateFromInput = document.getElementById('dateFrom');
             const dateToInput = document.getElementById('dateTo');
@@ -1117,7 +1014,6 @@
                     dateRange.to = `${d}/${m}/${y}`;
                 }
             } else {
-                // If no date filter is applied, show the min and max dates from the data
                 const dates = dataToPrint.map(row => {
                     if (row.date) {
                         const [d, m, y] = row.date.split('/');
@@ -1135,7 +1031,6 @@
                 }
             }
             
-            // Store additional data needed for the new print format
             sessionStorage.setItem('filteredData', JSON.stringify(dataToPrint));
             sessionStorage.setItem('columnsToShow', JSON.stringify(displayColumns));
             sessionStorage.setItem('dateRange', JSON.stringify(dateRange));

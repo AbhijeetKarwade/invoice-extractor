@@ -417,7 +417,7 @@
                     grouped[key].balance = balanceAdjustment;
                     
                     // Add to amounts
-                    grouped[key].amount += parseFloat(row['Total'] || 0);
+                    grouped[key].amount += parseFloat(row['Amount'] || 0);
                     grouped[key].payment += parseFloat(row['Received'] || row['Paid'] || 0);
                     
                     // Add item details if available
@@ -428,7 +428,7 @@
                             quantity: row['Quantity'],
                             unit: row['Unit'],
                             price: row['Price/ Unit'] || row['UnitPrice'],
-                            amount: row['Amount'] || row['Total']
+                            amount: row['Amount'] || row['Amount']
                         });
                         
                         grouped[key].totalQuantity += parseFloat(row['Quantity'] || 0);
