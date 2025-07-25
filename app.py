@@ -9,12 +9,12 @@ import logging
 app = Flask(__name__, static_folder='static', template_folder='static')
 
 # Configuration for file uploads
-UPLOAD_FOLDER = 'uploads'
+UPLOAD_FOLDER = 'Uploads'
 ALLOWED_EXTENSIONS = {'xlsx'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Configure logging
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -96,12 +96,20 @@ def process_excel_file(filepath):
             parent_table = parent_table.merge(custom_remaining, on=['Ref_No', 'date'], how='outer')
             parent_table = parent_table.merge(items_remaining, on=['Ref_No', 'date'], how='outer')
 
-            # Handle missing values - fill with empty string for strings, 0 for numbers
+            # Identify string and numeric columns, excluding 'Balance' for special handling
             string_columns = [col for col in parent_table.columns if parent_table[col].dtype == 'object']
-            numeric_columns = [col for col in parent_table.columns if parent_table[col].dtype in ['float64', 'int64']]
-            parent_table[string_columns] = parent_table[string_columns].fillna('')
-            parent_table[numeric_columns] = parent_table[numeric_columns].fillna(0)
-            
+            numeric_columns = [col for col in parent_table.columns if parent_table[col].dtype in ['float64', 'int64'] and col != 'Balance']
+
+            # Fill missing values: "NaN" for string columns, 0.00 for numeric columns (except Balance)
+            parent_table[string_columns] = parent_table[string_columns].fillna('NaN')
+            for col in numeric_columns:
+                parent_table[col] = parent_table[col].apply(lambda x: 0.00 if pd.isna(x) else x)
+
+            # Handle 'Balance' column separately: keep NaN as is, preserve explicit 0
+            if 'Balance' in parent_table.columns:
+                # Ensure explicit 0 values remain as 0, NaN remains NaN
+                parent_table['Balance'] = parent_table['Balance'].apply(lambda x: x if not pd.isna(x) else pd.NA)
+
             # Sort by date and Ref_No
             parent_table = parent_table.sort_values(by=['date', 'Ref_No'])
 
@@ -111,7 +119,7 @@ def process_excel_file(filepath):
             # Remove duplicates based on all columns
             parent_table = parent_table.drop_duplicates(keep='first')
 
-            # Convert the processed DataFrame to a dictionary and clean NaN values
+            # Convert the processed DataFrame to a dictionary
             processed_data = parent_table.to_dict(orient='records')
             processed_data = convert_nans(processed_data)
             

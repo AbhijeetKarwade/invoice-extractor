@@ -418,7 +418,7 @@
                     
                     // Add to amounts
                     grouped[key].amount += parseFloat(row['Amount'] || 0);
-                    grouped[key].payment += parseFloat(row['Received'] || row['Paid'] || 0);
+                    grouped[key].payment = parseFloat(row['Received'] || row['Paid'] || 0);
                     
                     // Add item details if available
                     if (row['Item Name'] || row['Quantity']) {
