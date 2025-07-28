@@ -211,6 +211,24 @@
         }
         .sheet-info-title { font-weight: 600; margin-bottom: 0.25rem; }
         .sheet-info-row { display: flex; justify-content: space-between; }
+
+        .filter-history {
+            margin-top: 1rem;
+            padding: 0.5rem;
+            background-color: #f8fafc;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+        }
+        .filter-history-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.25rem;
+        }
+        .filter-history-clear {
+            color: #3b82f6;
+            cursor: pointer;
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body class="p-4 bg-gray-100">
@@ -266,11 +284,13 @@
                     </div>
                     <div id="dateRangeActive" class="date-range-active hidden"></div>
                     <button id="searchByName" class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 mt-2 w-full text-sm">
-                        Apply
+                        Apply Filter
                     </button>
-                    <button id="clearFilters" class="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600 mt-2 w-full text-sm">
-                        Clear All Filters
-                    </button>
+                    <div id="filterHistory" class="filter-history hidden">
+                        <div class="sheet-info-title">Active Filters:</div>
+                        <div id="filterHistoryItems"></div>
+                        <div class="filter-history-clear" id="clearFilters">Clear All Filters</div>
+                    </div>
                 </div>
             </div>
 
@@ -315,37 +335,8 @@
         let currentSortColumn = null;
         let sortDirection = 'asc';
         let selectedRows = new Set();
-
-        // Update date range display
-        function updateDateRangeDisplay() {
-            const dateFrom = document.getElementById('dateFrom').value;
-            const dateTo = document.getElementById('dateTo').value;
-            const dateRangeActive = document.getElementById('dateRangeActive');
-            
-            if (dateFrom || dateTo) {
-                dateRangeActive.classList.remove('hidden');
-                dateRangeActive.textContent = `Date range: ${dateFrom || '...'} to ${dateTo || '...'}`;
-            } else {
-                dateRangeActive.classList.add('hidden');
-            }
-        }
-
-        // Clear all filters
-        function clearAllFilters() {
-            document.getElementById('dateFrom').value = '';
-            document.getElementById('dateTo').value = '';
-            document.getElementById('nameSearchInput').value = '';
-            document.getElementById('columnSelect').selectedIndex = -1;
-            updateDateRangeDisplay();
-            
-            filteredData = [...originalData];
-            selectedColumns = [...headers];
-            currentSortColumn = null;
-            sortDirection = 'asc';
-            showingAllRows = false;
-            selectedRows = new Set();
-            updateMatchingRowsTable();
-        }
+        let activeFilters = [];
+        let currentWorkingData = [];
 
         // Load Excel File
         document.getElementById('loadFile').addEventListener('click', () => {
@@ -392,15 +383,17 @@
                 
                 originalData = [...data];
                 filteredData = [...data];
+                currentWorkingData = [...data];
                 selectedColumns = [...headers];
                 showingAllRows = false;
                 currentSortColumn = null;
                 sortDirection = 'asc';
                 selectedRows = new Set();
+                activeFilters = [];
+                updateFilterHistory();
                 
                 updateMatchingRowsTable();
                 populateDropdowns();
-                clearAllFilters();
                 
                 const sheetInfoDiv = document.getElementById('sheetInfo');
                 sheetInfoDiv.classList.remove('hidden');
@@ -422,7 +415,10 @@
                 headers = [];
                 originalData = [];
                 filteredData = [];
+                currentWorkingData = [];
                 selectedRows = new Set();
+                activeFilters = [];
+                updateFilterHistory();
                 updateMatchingRowsTable();
                 document.getElementById('sheetInfo').classList.add('hidden');
                 document.getElementById('printToggle').checked = false;
@@ -474,35 +470,13 @@
                     dateRangeContainer.classList.remove('active');
                     dateRangeActive.classList.add('hidden');
                     
-                    // Get unique values excluding null/undefined/empty
-                    const uniqueValues = [...new Set(originalData.map(row => {
-                        const value = row[selectedColumn];
-                        if (value === null || value === undefined || value === '') {
-                            return null;
-                        }
-                        return value;
-                    }))].filter(val => val !== null && val !== undefined);
-                    
-                    const dropdown = document.getElementById('nameSearchDropdown');
-                    dropdown.innerHTML = '';
-                    
-                    // Add other options
-                    uniqueValues.sort().forEach(value => {
-                        const option = document.createElement('div');
-                        option.className = 'combo-box-option';
-                        option.textContent = value;
-                        option.dataset.value = value;
-                        option.addEventListener('click', () => {
-                            document.getElementById('nameSearchInput').value = value;
-                            dropdown.classList.remove('active');
-                        });
-                        dropdown.appendChild(option);
-                    });
+                    updateSearchDropdown(selectedColumn);
                     
                     const input = document.getElementById('nameSearchInput');
                     input.value = '';
                     input.addEventListener('input', function() {
                         const searchTerm = this.value.toLowerCase();
+                        const dropdown = document.getElementById('nameSearchDropdown');
                         const options = dropdown.querySelectorAll('.combo-box-option');
                         
                         options.forEach(option => {
@@ -518,15 +492,42 @@
                     });
                     
                     input.addEventListener('focus', () => {
+                        const dropdown = document.getElementById('nameSearchDropdown');
                         dropdown.classList.add('active');
                     });
                     
                     document.addEventListener('click', (e) => {
                         if (!textSearchContainer.contains(e.target)) {
+                            const dropdown = document.getElementById('nameSearchDropdown');
                             dropdown.classList.remove('active');
                         }
                     });
                 }
+            });
+        }
+
+        function updateSearchDropdown(column) {
+            const uniqueValues = [...new Set(currentWorkingData.map(row => {
+                const value = row[column];
+                if (value === null || value === undefined || value === '' || value === 0) {
+                    return '(Blank/Zero)';
+                }
+                return value;
+            }))].filter(val => val !== undefined);
+            
+            const dropdown = document.getElementById('nameSearchDropdown');
+            dropdown.innerHTML = '';
+            
+            uniqueValues.forEach(value => {
+                const option = document.createElement('div');
+                option.className = value === '(Blank/Zero)' ? 'combo-box-option blank-option' : 'combo-box-option';
+                option.textContent = value;
+                option.dataset.value = value === '(Blank/Zero)' ? '0' : value;
+                option.addEventListener('click', () => {
+                    document.getElementById('nameSearchInput').value = value === '(Blank/Zero)' ? '' : value;
+                    dropdown.classList.remove('active');
+                });
+                dropdown.appendChild(option);
             });
         }
 
@@ -878,103 +879,134 @@
             }
         }
 
-        document.getElementById('searchByName').addEventListener('click', () => {
-            const column = document.getElementById('nameColumn').value;
-            const isDateColumn = column.toLowerCase().includes('date');
+        function updateFilterHistory() {
+            const filterHistoryContainer = document.getElementById('filterHistory');
+            const filterHistoryItems = document.getElementById('filterHistoryItems');
             
-            // Get current date filter values
-            const dateFromInput = document.getElementById('dateFrom');
-            const dateToInput = document.getElementById('dateTo');
-            const dateFrom = dateFromInput.value;
-            const dateTo = dateToInput.value;
-            
-            // First filter by date if dates are selected
-            let dateFilteredData = [...originalData];
-            if (dateFrom || dateTo) {
-                dateFilteredData = originalData.filter(row => {
-                    if (!row.date) return false;
-                    
-                    const [d, m, y] = row.date.split('/');
-                    const rowDate = new Date(`${y}-${m}-${d}`);
-                    
-                    if (dateFrom) {
-                        const fromDate = new Date(dateFrom);
-                        if (rowDate < fromDate) return false;
-                    }
-                    
-                    if (dateTo) {
-                        const toDate = new Date(dateTo);
-                        toDate.setDate(toDate.getDate() + 1); // Include the entire end date
-                        if (rowDate >= toDate) return false;
-                    }
-                    
-                    return true;
-                });
+            if (activeFilters.length === 0) {
+                filterHistoryContainer.classList.add('hidden');
+                return;
             }
             
-            if (isDateColumn) {
-                // [Keep existing date filtering logic unchanged]
-            } else {
-                const searchInput = document.getElementById('nameSearchInput');
-                const searchTerm = searchInput.value;
+            filterHistoryContainer.classList.remove('hidden');
+            filterHistoryItems.innerHTML = '';
+            
+            activeFilters.forEach((filter, index) => {
+                const filterItem = document.createElement('div');
+                filterItem.className = 'filter-history-item';
                 
-                // Apply the party/other filter to the date-filtered data
-                filteredData = dateFilteredData.filter(row => {
-                    const cellValue = row[column];
-                    
-                    if (searchTerm === '') {
-                        return cellValue === null || 
-                            cellValue === undefined || 
-                            cellValue === '' || 
-                            (typeof cellValue === 'number' && isNaN(cellValue)) ||
-                            (column === 'Ref_No' && (cellValue === null || cellValue === undefined || cellValue === ''));
-                    } else {
-                        if (searchTerm === '0' && cellValue === 0) {
-                            return true;
+                let filterText = '';
+                if (filter.type === 'text') {
+                    filterText = `${filter.column}: ${filter.value === '' ? '(Blank)' : filter.value}`;
+                } else if (filter.type === 'date') {
+                    filterText = `${filter.column}: ${filter.from || 'Start'} to ${filter.to || 'End'}`;
+                }
+                
+                filterItem.innerHTML = `
+                    <span>${filterText}</span>
+                    <span class="filter-history-clear" data-index="${index}">×</span>
+                `;
+                
+                filterHistoryItems.appendChild(filterItem);
+            });
+            
+            // Add event listeners to remove buttons
+            document.querySelectorAll('.filter-history-clear[data-index]').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const index = parseInt(e.target.dataset.index);
+                    removeFilter(index);
+                });
+            });
+        }
+
+        function removeFilter(index) {
+            if (index >= 0 && index < activeFilters.length) {
+                activeFilters.splice(index, 1);
+                applyAllFilters();
+            }
+        }
+
+        function applyAllFilters() {
+            let workingData = [...originalData];
+            
+            activeFilters.forEach(filter => {
+                if (filter.type === 'text') {
+                    workingData = workingData.filter(row => {
+                        const cellValue = row[filter.column];
+                        
+                        // Handle blank search input (user clicked Apply without selecting)
+                        if (filter.value === '') {
+                            // Return only truly blank/null values (excluding 0)
+                            return cellValue === null || cellValue === undefined || cellValue === '';
+                        } 
+                        // Handle explicit 0 filter (user selected 0 or Blank/Zero)
+                        else if (filter.value === '0') {
+                            // Return 0, blank, or null values
+                            return cellValue === 0 || cellValue === null || cellValue === undefined || cellValue === '';
+                        } 
+                        // Normal case for other values
+                        else {
+                            // Handle case-insensitive string comparison
+                            return String(cellValue).toLowerCase() === String(filter.value).toLowerCase();
                         }
-                        if (cellValue === null || cellValue === undefined) {
+                    });
+                } else if (filter.type === 'date') {
+                    workingData = workingData.filter(row => {
+                        const cellValue = row[filter.column];
+                        if (!cellValue) return false;
+                        
+                        let cellDate;
+                        if (cellValue instanceof Date) {
+                            cellDate = new Date(cellValue);
+                        } else if (typeof cellValue === 'string' || typeof cellValue === 'number') {
+                            if (typeof cellValue === 'string' && cellValue.includes('/')) {
+                                const parts = cellValue.split('/');
+                                if (parts.length === 3) {
+                                    const day = parseInt(parts[0], 10);
+                                    const month = parseInt(parts[1], 10) - 1;
+                                    const year = parseInt(parts[2], 10);
+                                    cellDate = new Date(year, month, day);
+                                } else {
+                                    cellDate = new Date(cellValue);
+                                }
+                            } else {
+                                cellDate = new Date(cellValue);
+                            }
+                        } else {
                             return false;
                         }
-                        return String(cellValue) === searchTerm;
-                    }
-                });
-
-                // Special handling for Ref_No blank values
-                if (column === 'Ref_No' && searchTerm === '') {
-                    const blankRefNos = filteredData.map(row => row.date);
-                    filteredData = dateFilteredData.filter(row => 
-                        blankRefNos.includes(row.date) || 
-                        (row[column] === null || row[column] === undefined || row[column] === '')
-                    );
-                }
-
-                const nonEmptyColumns = new Set();
-                
-                headers.forEach(header => {
-                    const hasData = filteredData.some(row => {
-                        const value = row[header];
-                        return value !== null && 
-                            value !== undefined && 
-                            value.toString().trim() !== '' && 
-                            value !== 0 && 
-                            value !== '0';
+                        
+                        if (isNaN(cellDate.getTime())) return false;
+                        
+                        const fromDate = filter.from ? new Date(filter.from) : null;
+                        const toDate = filter.to ? new Date(filter.to) : null;
+                        
+                        if (fromDate) fromDate.setHours(0, 0, 0, 0);
+                        if (toDate) toDate.setHours(23, 59, 59, 999);
+                        cellDate.setHours(0, 0, 0, 0);
+                        
+                        if (fromDate && toDate) {
+                            return cellDate >= fromDate && cellDate <= toDate;
+                        } else if (fromDate) {
+                            return cellDate >= fromDate;
+                        } else if (toDate) {
+                            return cellDate <= toDate;
+                        }
+                        return false;
                     });
-                    
-                    if (hasData) {
-                        nonEmptyColumns.add(header);
-                    }
-                });
-
-                selectedColumns = headers.filter(header => nonEmptyColumns.has(header));
-                
-                const columnSelect = document.getElementById('columnSelect');
-                Array.from(columnSelect.options).forEach(option => {
-                    option.selected = selectedColumns.includes(option.value);
-                });
-                
-                document.getElementById('dateRangeActive').classList.add('hidden');
+                }
+            });
+            
+            currentWorkingData = workingData;
+            filteredData = [...workingData];
+            
+            // Update the search dropdown with current working data
+            const selectedColumn = document.getElementById('nameColumn').value;
+            if (selectedColumn && !selectedColumn.toLowerCase().includes('date')) {
+                updateSearchDropdown(selectedColumn);
             }
-
+            
+            // Update the table with filtered data
             currentSortColumn = null;
             sortDirection = 'asc';
             showingAllRows = false;
@@ -982,10 +1014,96 @@
             document.getElementById('printToggle').checked = false;
             document.getElementById('printToggleLabel').textContent = 'Print All';
             updateMatchingRowsTable();
-            updateDateRangeDisplay();
+            updateFilterHistory();
+}
+
+        document.getElementById('searchByName').addEventListener('click', () => {
+            const column = document.getElementById('nameColumn').value;
+            const isDateColumn = column.toLowerCase().includes('date');
+            
+            if (isDateColumn) {
+                const dateFrom = document.getElementById('dateFrom').value;
+                const dateTo = document.getElementById('dateTo').value;
+                
+                if (!dateFrom && !dateTo) {
+                    alert('Please select at least one date for the range');
+                    return;
+                }
+                
+                // Add or update date filter
+                const existingDateFilterIndex = activeFilters.findIndex(f => f.type === 'date' && f.column === column);
+                
+                if (existingDateFilterIndex >= 0) {
+                    activeFilters[existingDateFilterIndex] = {
+                        type: 'date',
+                        column: column,
+                        from: dateFrom,
+                        to: dateTo
+                    };
+                } else {
+                    activeFilters.push({
+                        type: 'date',
+                        column: column,
+                        from: dateFrom,
+                        to: dateTo
+                    });
+                }
+                
+                document.getElementById('dateRangeActive').textContent = `Active range: ${dateFrom || 'Start'} to ${dateTo || 'End'}`;
+                document.getElementById('dateRangeActive').classList.remove('hidden');
+            } else {
+                const searchTerm = document.getElementById('nameSearchInput').value;
+                
+                // Add or update text filter
+                const existingTextFilterIndex = activeFilters.findIndex(f => f.type === 'text' && f.column === column);
+                
+                if (existingTextFilterIndex >= 0) {
+                    activeFilters[existingTextFilterIndex] = {
+                        type: 'text',
+                        column: column,
+                        value: searchTerm
+                    };
+                } else {
+                    activeFilters.push({
+                        type: 'text',
+                        column: column,
+                        value: searchTerm
+                    });
+                }
+                
+                document.getElementById('dateRangeActive').classList.add('hidden');
+            }
+            
+            applyAllFilters();
         });
 
-        document.getElementById('clearFilters').addEventListener('click', clearAllFilters);
+        document.getElementById('clearFilters').addEventListener('click', () => {
+            activeFilters = [];
+            currentWorkingData = [...originalData];
+            filteredData = [...originalData];
+            
+            // Reset UI elements
+            document.getElementById('nameSearchInput').value = '';
+            document.getElementById('dateFrom').value = '';
+            document.getElementById('dateTo').value = '';
+            document.getElementById('dateRangeActive').classList.add('hidden');
+            
+            // Update the search dropdown with original data
+            const selectedColumn = document.getElementById('nameColumn').value;
+            if (selectedColumn && !selectedColumn.toLowerCase().includes('date')) {
+                updateSearchDropdown(selectedColumn);
+            }
+            
+            // Update the table with all data
+            currentSortColumn = null;
+            sortDirection = 'asc';
+            showingAllRows = false;
+            selectedRows = new Set();
+            document.getElementById('printToggle').checked = false;
+            document.getElementById('printToggleLabel').textContent = 'Print All';
+            updateMatchingRowsTable();
+            updateFilterHistory();
+        });
 
         document.getElementById('showAllRows').addEventListener('click', () => {
             showingAllRows = true;
@@ -993,14 +1111,12 @@
         });
 
         document.getElementById('applyFilters').addEventListener('click', () => {
-            // Get all selected options from the column select dropdown
-            const columnSelect = document.getElementById('columnSelect');
-            const selectedOptions = Array.from(columnSelect.selectedOptions).map(opt => opt.value);
+            selectedColumns = Array.from(document.getElementById('columnSelect').selectedOptions).map(opt => opt.value);
             
-            // Update the selectedColumns variable
-            selectedColumns = selectedOptions.length > 0 ? selectedOptions : [...headers];
+            if (selectedColumns.length === 0) {
+                selectedColumns = [...headers];
+            }
             
-            // Update the table with the new column selection
             showingAllRows = false;
             updateMatchingRowsTable();
         });
@@ -1027,7 +1143,7 @@
                 prepareAndOpenPrintView(filteredData);
             }
         });
-
+        
         function prepareAndOpenPrintView(dataToPrint) {
             const displayColumns = selectedColumns.length > 0 ? selectedColumns : headers;
             
@@ -1088,10 +1204,6 @@
                 }
             }, 100);
         }
-
-        // Initialize date range display updates
-        document.getElementById('dateFrom').addEventListener('change', updateDateRangeDisplay);
-        document.getElementById('dateTo').addEventListener('change', updateDateRangeDisplay);
     </script>
 </body>
 </html>
