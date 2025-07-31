@@ -337,6 +337,7 @@
         let selectedRows = new Set();
         let activeFilters = [];
         let currentWorkingData = [];
+        let rowIndexMap = []; // This will map filtered row indices to original data indices
 
         // Load Excel File
         document.getElementById('loadFile').addEventListener('click', () => {
@@ -509,8 +510,14 @@
         function updateSearchDropdown(column) {
             const uniqueValues = [...new Set(currentWorkingData.map(row => {
                 const value = row[column];
-                if (value === null || value === undefined || value === '' || value === 0) {
-                    return '(Blank/Zero)';
+                if (value === null || value === undefined) {
+                    return '(Blank)';
+                }
+                if (value === 0 || value === '0') {
+                    return '0'; // Explicitly handle 0 values
+                }
+                if (value.toString().trim() === '') {
+                    return '(Blank)';
                 }
                 return value;
             }))].filter(val => val !== undefined);
@@ -520,11 +527,11 @@
             
             uniqueValues.forEach(value => {
                 const option = document.createElement('div');
-                option.className = value === '(Blank/Zero)' ? 'combo-box-option blank-option' : 'combo-box-option';
+                option.className = value === '(Blank)' ? 'combo-box-option blank-option' : 'combo-box-option';
                 option.textContent = value;
-                option.dataset.value = value === '(Blank/Zero)' ? '0' : value;
+                option.dataset.value = value === '(Blank)' ? '' : value;
                 option.addEventListener('click', () => {
-                    document.getElementById('nameSearchInput').value = value === '(Blank/Zero)' ? '' : value;
+                    document.getElementById('nameSearchInput').value = value === '(Blank)' ? '' : value;
                     dropdown.classList.remove('active');
                 });
                 dropdown.appendChild(option);
@@ -630,6 +637,14 @@
                 selectedRows.delete(index);
                 row.classList.remove('selected-row');
             }
+            
+            // Update the select all checkbox state
+            const selectAllCheckbox = document.querySelector('.select-all-checkbox');
+            const allCheckboxes = document.querySelectorAll('#matchingRowsTable tbody input.row-checkbox');
+            const checkedCount = document.querySelectorAll('#matchingRowsTable tbody input.row-checkbox:checked').length;
+            
+            selectAllCheckbox.checked = checkedCount === allCheckboxes.length;
+            selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < allCheckboxes.length;
         }
 
         function selectAllRows(selectAllCheckbox) {
@@ -667,6 +682,18 @@
             // First calculate running balances properly
             const dataWithBalances = calculateRunningBalances(filteredData);
             const rowsToShow = showingAllRows ? dataWithBalances : dataWithBalances.slice(0, 5);
+
+            // Create a mapping between filtered row indices and original data indices
+            rowIndexMap = [];
+            filteredData.forEach((row, filteredIndex) => {
+                const originalIndex = originalData.findIndex(originalRow => 
+                    originalRow['Ref_No'] === row['Ref_No'] && 
+                    originalRow['date'] === row['date']
+                );
+                if (originalIndex !== -1) {
+                    rowIndexMap[filteredIndex] = originalIndex;
+                }
+            });
 
             const thead = document.createElement('thead');
             const tr = document.createElement('tr');
@@ -934,20 +961,28 @@
                     workingData = workingData.filter(row => {
                         const cellValue = row[filter.column];
                         
-                        // Handle blank search input (user clicked Apply without selecting)
+                        // Handle the case when filtering for blank values
                         if (filter.value === '') {
-                            // Return only truly blank/null values (excluding 0)
-                            return cellValue === null || cellValue === undefined || cellValue === '';
-                        } 
-                        // Handle explicit 0 filter (user selected 0 or Blank/Zero)
+                            return cellValue === null || 
+                                   cellValue === undefined || 
+                                   (typeof cellValue === 'string' && cellValue.trim() === '');
+                        }
+                        // Handle the case when filtering for 0 (should include blank/null too)
                         else if (filter.value === '0') {
-                            // Return 0, blank, or null values
-                            return cellValue === 0 || cellValue === null || cellValue === undefined || cellValue === '';
-                        } 
-                        // Normal case for other values
+                            return cellValue === 0 || 
+                                   cellValue === '0' || 
+                                   cellValue === null || 
+                                   cellValue === undefined || 
+                                   (typeof cellValue === 'string' && cellValue.trim() === '');
+                        }
+                        // Handle other cases
                         else {
-                            // Handle case-insensitive string comparison
-                            return String(cellValue).toLowerCase() === String(filter.value).toLowerCase();
+                            // For numeric comparison
+                            if (!isNaN(cellValue) && !isNaN(filter.value)) {
+                                return parseFloat(cellValue) === parseFloat(filter.value);
+                            }
+                            // For string comparison
+                            return cellValue != null && cellValue.toString() === filter.value;
                         }
                     });
                 } else if (filter.type === 'date') {
@@ -1000,6 +1035,34 @@
             currentWorkingData = workingData;
             filteredData = [...workingData];
             
+            // Remove blank/empty columns and columns with all zeros from filtered data
+            const nonEmptyColumns = new Set();
+            
+            // First, find all columns that have at least one non-empty/non-zero value
+            headers.forEach(header => {
+                const hasData = filteredData.some(row => {
+                    const value = row[header];
+                    return value !== null && 
+                           value !== undefined && 
+                           value.toString().trim() !== '' && 
+                           value !== 0 && 
+                           value !== '0';
+                });
+                
+                if (hasData) {
+                    nonEmptyColumns.add(header);
+                }
+            });
+
+            // Update selected columns to only include non-empty and non-zero ones
+            selectedColumns = headers.filter(header => nonEmptyColumns.has(header));
+            
+            // Update the column select dropdown to reflect the new selection
+            const columnSelect = document.getElementById('columnSelect');
+            Array.from(columnSelect.options).forEach(option => {
+                option.selected = selectedColumns.includes(option.value);
+            });
+            
             // Update the search dropdown with current working data
             const selectedColumn = document.getElementById('nameColumn').value;
             if (selectedColumn && !selectedColumn.toLowerCase().includes('date')) {
@@ -1015,7 +1078,7 @@
             document.getElementById('printToggleLabel').textContent = 'Print All';
             updateMatchingRowsTable();
             updateFilterHistory();
-}
+        }
 
         document.getElementById('searchByName').addEventListener('click', () => {
             const column = document.getElementById('nameColumn').value;
@@ -1052,7 +1115,12 @@
                 document.getElementById('dateRangeActive').textContent = `Active range: ${dateFrom || 'Start'} to ${dateTo || 'End'}`;
                 document.getElementById('dateRangeActive').classList.remove('hidden');
             } else {
-                const searchTerm = document.getElementById('nameSearchInput').value;
+                let searchTerm = document.getElementById('nameSearchInput').value;
+                
+                // Explicitly handle the case when "0" is selected
+                if (searchTerm === '0') {
+                    searchTerm = '0'; // Keep as string to distinguish from blank
+                }
                 
                 // Add or update text filter
                 const existingTextFilterIndex = activeFilters.findIndex(f => f.type === 'text' && f.column === column);
@@ -1133,7 +1201,23 @@
                     alert('No rows selected. Please select rows to print.');
                     return;
                 }
-                const selectedData = Array.from(selectedRows).map(index => filteredData[index]);
+                
+                // Get selected data with proper index mapping
+                const selectedData = [];
+                const checkboxes = document.querySelectorAll('#matchingRowsTable tbody input.row-checkbox:checked');
+                
+                checkboxes.forEach(checkbox => {
+                    const index = parseInt(checkbox.dataset.index);
+                    if (index >= 0 && index < filteredData.length) {
+                        selectedData.push(filteredData[index]);
+                    }
+                });
+                
+                if (selectedData.length === 0) {
+                    alert('No valid rows found for printing. Please try again.');
+                    return;
+                }
+                
                 prepareAndOpenPrintView(selectedData);
             } else {
                 if (filteredData.length === 0) {
@@ -1143,59 +1227,55 @@
                 prepareAndOpenPrintView(filteredData);
             }
         });
-        
+
         function prepareAndOpenPrintView(dataToPrint) {
+            // Ensure we have valid data
+            if (!dataToPrint || dataToPrint.length === 0) {
+                alert('No valid data to print');
+                return;
+            }
+
             const displayColumns = selectedColumns.length > 0 ? selectedColumns : headers;
             
+            // Extract party information
+            let partyInfo = { name: 'N/A', mobile: 'N/A' };
             const partyRow = dataToPrint.find(row => row['Party Name_y']);
-            let partyInfo = { name: '', mobile: '' };
-            
             if (partyRow) {
                 const partyString = partyRow['Party Name_y'];
                 const mobileMatch = partyString.match(/\d{10}/);
-                partyInfo.mobile = mobileMatch ? mobileMatch[0] : '';
-                
+                partyInfo.mobile = mobileMatch ? mobileMatch[0] : 'N/A';
                 partyInfo.name = partyString.replace(/\(.*\d{10}.*\)/, '').trim();
                 if (!partyInfo.name) {
-                    partyInfo.name = partyString.replace(/\d{10}/, '').replace(/[()]/g, '').trim();
+                    partyInfo.name = partyString.replace(/\d{10}/, '').replace(/[()]/g, '').trim() || 'N/A';
                 }
             }
+
+            // Calculate date range
+            const dateRange = { from: 'N/A', to: 'N/A' };
+            const validDates = dataToPrint
+                .map(row => row.date ? new Date(row.date.split('/').reverse().join('/')) : null)
+                .filter(date => date && !isNaN(date.getTime()));
             
-            const dateRange = { from: '', to: '' };
-            const dateFromInput = document.getElementById('dateFrom');
-            const dateToInput = document.getElementById('dateTo');
-            
-            if (dateFromInput.value || dateToInput.value) {
-                if (dateFromInput.value) {
-                    const [y, m, d] = dateFromInput.value.split('-');
-                    dateRange.from = `${d}/${m}/${y}`;
-                }
-                if (dateToInput.value) {
-                    const [y, m, d] = dateToInput.value.split('-');
-                    dateRange.to = `${d}/${m}/${y}`;
-                }
-            } else {
-                const dates = dataToPrint.map(row => {
-                    if (row.date) {
-                        const [d, m, y] = row.date.split('/');
-                        return new Date(`${y}-${m}-${d}`);
-                    }
-                    return null;
-                }).filter(date => date);
+            if (validDates.length > 0) {
+                const minDate = new Date(Math.min(...validDates));
+                const maxDate = new Date(Math.max(...validDates));
                 
-                if (dates.length > 0) {
-                    const minDate = new Date(Math.min(...dates));
-                    const maxDate = new Date(Math.max(...dates));
-                    
-                    dateRange.from = `${String(minDate.getDate()).padStart(2, '0')}/${String(minDate.getMonth() + 1).padStart(2, '0')}/${minDate.getFullYear()}`;
-                    dateRange.to = `${String(maxDate.getDate()).padStart(2, '0')}/${String(maxDate.getMonth() + 1).padStart(2, '0')}/${maxDate.getFullYear()}`;
-                }
+                dateRange.from = `${String(minDate.getDate()).padStart(2, '0')}/${String(minDate.getMonth() + 1).padStart(2, '0')}/${minDate.getFullYear()}`;
+                dateRange.to = `${String(maxDate.getDate()).padStart(2, '0')}/${String(maxDate.getMonth() + 1).padStart(2, '0')}/${maxDate.getFullYear()}`;
             }
-            
+
+            // Store data for print view
             sessionStorage.setItem('filteredData', JSON.stringify(dataToPrint));
             sessionStorage.setItem('columnsToShow', JSON.stringify(displayColumns));
             sessionStorage.setItem('dateRange', JSON.stringify(dateRange));
             sessionStorage.setItem('partyInfo', JSON.stringify(partyInfo));
+            
+            // Open print view in new tab
+            const printWindow = window.open('/print', '_blank');
+            if (!printWindow) {
+                alert('Popup blocked. Please allow popups for this site.');
+            }
+        
             
             setTimeout(() => {
                 const printWindow = window.open('/print', '_blank');

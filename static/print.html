@@ -352,11 +352,12 @@
                     groupDiv.appendChild(itemTable);
                 }
                 
-                // Add description if available
-                if (txn.description) {
+                // Add description if available - now checking Description, Description_x, and Description_y
+                const description = txn.description || txn.description_x || txn.description_y;
+                if (description) {
                     const descDiv = document.createElement('div');
                     descDiv.className = 'description-row';
-                    descDiv.textContent = `Description: ${txn.description}`;
+                    descDiv.textContent = `Description: ${description}`;
                     groupDiv.appendChild(descDiv);
                 }
                 
@@ -392,7 +393,9 @@
                             amount: 0,
                             payment: 0,
                             balance: 0, // This will be calculated based on type
-                            description: row['Description_x'],
+                            description: row['Description'] || row['Description_x'] || row['Description_y'],
+                            description_x: row['Description_x'],
+                            description_y: row['Description_y'],
                             items: [],
                             totalQuantity: 0
                         };
@@ -434,9 +437,9 @@
                         grouped[key].totalQuantity += parseFloat(row['Quantity'] || 0);
                     }
                     
-                    // Keep the first description found
-                    if (row['Description_x'] && !grouped[key].description) {
-                        grouped[key].description = row['Description_x'];
+                    // Keep the first description found (checking all three possible description fields)
+                    if (!grouped[key].description) {
+                        grouped[key].description = row['Description'] || row['Description_x'] || row['Description_y'];
                     }
                 });
                 
