@@ -338,6 +338,7 @@
         let activeFilters = [];
         let currentWorkingData = [];
         let rowIndexMap = []; // This will map filtered row indices to original data indices
+        let preCalculatedBalances = {}; // Cache for calculated balances
 
         // Load Excel File
         document.getElementById('loadFile').addEventListener('click', () => {
@@ -391,8 +392,11 @@
                 sortDirection = 'asc';
                 selectedRows = new Set();
                 activeFilters = [];
-                updateFilterHistory();
                 
+                // Pre-calculate balances for the entire dataset
+                preCalculatedBalances = calculateAllBalances(data);
+                
+                updateFilterHistory();
                 updateMatchingRowsTable();
                 populateDropdowns();
                 
@@ -431,6 +435,51 @@
                 loadSpinner.classList.add('hidden');
             });
         });
+        
+        // Pre-calculate balances for all data once
+        function calculateAllBalances(data) {
+            const balances = {};
+            let runningBalance = 0;
+            
+            const openingBalanceRow = data.find(row => row['Ref_No'] === 'Opening Balance');
+            if (openingBalanceRow) {
+                runningBalance = parseFloat(openingBalanceRow['Balance'] || 0);
+            }
+            
+            // Group transactions by date and Ref_No
+            const transactions = {};
+            data.forEach(row => {
+                if (row['Ref_No'] === 'Opening Balance') return;
+                
+                const key = `${row['date']}_${row['Ref_No']}`;
+                if (!transactions[key]) {
+                    transactions[key] = {
+                        adjustment: calculateBalanceAdjustment(row),
+                        rows: []
+                    };
+                }
+                transactions[key].rows.push(row);
+            });
+            
+            // Sort transactions by date
+            const sortedKeys = Object.keys(transactions).sort((a, b) => {
+                const dateA = new Date(a.split('_')[0].split('/').reverse().join('/'));
+                const dateB = new Date(b.split('_')[0].split('/').reverse().join('/'));
+                return dateA - dateB;
+            });
+            
+            // Calculate running balances
+            sortedKeys.forEach(key => {
+                const group = transactions[key];
+                runningBalance += group.adjustment;
+                
+                group.rows.forEach(row => {
+                    balances[`${row['date']}_${row['Ref_No']}`] = runningBalance;
+                });
+            });
+            
+            return balances;
+        }
         
         function populateDropdowns() {
             const nameColumn = document.getElementById('nameColumn');
@@ -555,47 +604,6 @@
             return adjustment;
         }
 
-        function calculateRunningBalances(data) {
-            const transactions = {};
-            let runningBalance = 0;
-
-            const openingBalanceRow = data.find(row => row['Ref_No'] === 'Opening Balance');
-            if (openingBalanceRow) {
-                runningBalance = parseFloat(openingBalanceRow['Balance'] || 0);
-            }
-
-            data.forEach(row => {
-                if (row['Ref_No'] === 'Opening Balance') return;
-                
-                const key = `${row['date']}_${row['Ref_No']}`;
-                
-                if (!transactions[key]) {
-                    transactions[key] = {
-                        adjustment: calculateBalanceAdjustment(row),
-                        rows: []
-                    };
-                }
-                transactions[key].rows.push(row);
-            });
-
-            const sortedKeys = Object.keys(transactions).sort((a, b) => {
-                const dateA = new Date(a.split('_')[0].split('/').reverse().join('/'));
-                const dateB = new Date(b.split('_')[0].split('/').reverse().join('/'));
-                return dateA - dateB;
-            });
-
-            sortedKeys.forEach(key => {
-                const group = transactions[key];
-                runningBalance += group.adjustment;
-                
-                group.rows.forEach(row => {
-                    row['Est. Balance'] = runningBalance;
-                });
-            });
-
-            return data;
-        }
-
         function sortData(column) {
             if (currentSortColumn === column) {
                 sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
@@ -679,9 +687,7 @@
                 return;
             }
 
-            // First calculate running balances properly
-            const dataWithBalances = calculateRunningBalances(filteredData);
-            const rowsToShow = showingAllRows ? dataWithBalances : dataWithBalances.slice(0, 5);
+            const rowsToShow = showingAllRows ? filteredData : filteredData.slice(0, 5);
 
             // Create a mapping between filtered row indices and original data indices
             rowIndexMap = [];
@@ -737,7 +743,60 @@
             
             // Group transactions by Ref_No and date to calculate totals correctly
             const groupedTransactions = {};
-            dataWithBalances.forEach(row => {
+            let runningBalance = 0;
+            
+            // Find opening balance if exists
+            const openingBalanceRow = filteredData.find(row => row['Ref_No'] === 'Opening Balance');
+            if (openingBalanceRow) {
+                runningBalance = parseFloat(openingBalanceRow['Balance'] || 0);
+                
+                // Add opening balance row
+                const openingTr = document.createElement('tr');
+                openingTr.dataset.index = 0;
+                
+                // Add checkbox for row selection
+                const tdSelect = document.createElement('td');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'row-checkbox';
+                checkbox.dataset.index = 0;
+                checkbox.addEventListener('change', (e) => toggleRowSelection(0, e.target));
+                if (selectedRows.has(0)) {
+                    checkbox.checked = true;
+                    openingTr.classList.add('selected-row');
+                }
+                tdSelect.appendChild(checkbox);
+                openingTr.appendChild(tdSelect);
+                
+                // Add sequential number
+                const tdNum = document.createElement('td');
+                tdNum.textContent = '1';
+                openingTr.appendChild(tdNum);
+                
+                // Add data columns
+                displayColumns.forEach(header => {
+                    const td = document.createElement('td');
+                    if (header === 'Balance' || header === 'Est. Balance') {
+                        td.className = 'amount-column';
+                        td.textContent = runningBalance.toFixed(2);
+                    } else if (header === 'Ref_No') {
+                        td.textContent = 'Opening Balance';
+                    } else if (header === 'Amount' || header === 'Received' || header === 'Paid') {
+                        td.className = 'amount-column';
+                        td.textContent = '0.00';
+                    } else {
+                        td.textContent = '';
+                    }
+                    openingTr.appendChild(td);
+                });
+                
+                tbody.appendChild(openingTr);
+            }
+            
+            // Process other transactions
+            rowsToShow.forEach((row, rowIndex) => {
+                if (row['Ref_No'] === 'Opening Balance') return;
+                
                 const key = `${row['date']}_${row['Ref_No']}`;
                 if (!groupedTransactions[key]) {
                     groupedTransactions[key] = {
@@ -746,65 +805,52 @@
                         received: parseFloat(row['Received'] || 0),
                         paid: parseFloat(row['Paid'] || 0),
                         balance: parseFloat(row['Balance'] || 0),
-                        estBalance: parseFloat(row['Est. Balance'] || 0)
+                        adjustment: calculateBalanceAdjustment(row)
                     };
+                    runningBalance += groupedTransactions[key].adjustment;
                 }
                 groupedTransactions[key].rows.push(row);
                 groupedTransactions[key].total += parseFloat(row['Amount'] || 0);
-            });
-
-            // Calculate the final running balance
-            let finalBalance = 0;
-            Object.values(groupedTransactions).forEach(group => {
-                finalBalance = group.estBalance;
-            });
-
-            // Now display the rows
-            let rowIndex = 0;
-            Object.keys(groupedTransactions).forEach(key => {
-                const group = groupedTransactions[key];
-                group.rows.forEach((row, itemIndex) => {
-                    const tr = document.createElement('tr');
-                    tr.dataset.index = rowIndex;
-                    
-                    // Add checkbox for row selection
-                    const tdSelect = document.createElement('td');
-                    const checkbox = document.createElement('input');
-                    checkbox.type = 'checkbox';
-                    checkbox.className = 'row-checkbox';
-                    checkbox.dataset.index = rowIndex;
-                    checkbox.addEventListener('change', (e) => toggleRowSelection(rowIndex, e.target));
-                    if (selectedRows.has(rowIndex)) {
-                        checkbox.checked = true;
-                        tr.classList.add('selected-row');
-                    }
-                    tdSelect.appendChild(checkbox);
-                    tr.appendChild(tdSelect);
-                    
-                    // Add sequential number
-                    const tdNum = document.createElement('td');
-                    tdNum.textContent = rowIndex + 1;
-                    tr.appendChild(tdNum);
-                    
-                    displayColumns.forEach(header => {
-                        const td = document.createElement('td');
-                        if (header === 'Amount' || header === 'Received' || header === 'Total' || 
-                            header === 'Paid' || header === 'Balance' || header === 'Est. Balance') {
-                            td.className = 'amount-column';
-                            // For grouped rows, only show the full values on the first row
-                            if (itemIndex === 0 || !['Total', 'Received', 'Paid', 'Balance', 'Est. Balance'].includes(header)) {
-                                td.textContent = row[header] ? parseFloat(row[header]).toFixed(2) : '0.00';
-                            } else {
-                                td.textContent = ''; // Leave empty for subsequent rows of same transaction
-                            }
+                
+                const tr = document.createElement('tr');
+                tr.dataset.index = rowIndex + (openingBalanceRow ? 1 : 0);
+                
+                // Add checkbox for row selection
+                const tdSelect = document.createElement('td');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'row-checkbox';
+                checkbox.dataset.index = rowIndex + (openingBalanceRow ? 1 : 0);
+                checkbox.addEventListener('change', (e) => toggleRowSelection(rowIndex + (openingBalanceRow ? 1 : 0), e.target));
+                if (selectedRows.has(rowIndex + (openingBalanceRow ? 1 : 0))) {
+                    checkbox.checked = true;
+                    tr.classList.add('selected-row');
+                }
+                tdSelect.appendChild(checkbox);
+                tr.appendChild(tdSelect);
+                
+                // Add sequential number
+                const tdNum = document.createElement('td');
+                tdNum.textContent = rowIndex + (openingBalanceRow ? 2 : 1);
+                tr.appendChild(tdNum);
+                
+                displayColumns.forEach(header => {
+                    const td = document.createElement('td');
+                    if (header === 'Amount' || header === 'Received' || header === 'Total' || 
+                        header === 'Paid' || header === 'Balance' || header === 'Est. Balance') {
+                        td.className = 'amount-column';
+                        if (header === 'Est. Balance') {
+                            td.textContent = runningBalance.toFixed(2);
                         } else {
-                            td.textContent = row[header] || '';
+                            td.textContent = row[header] ? parseFloat(row[header]).toFixed(2) : '0.00';
                         }
-                        tr.appendChild(td);
-                    });
-                    tbody.appendChild(tr);
-                    rowIndex++;
+                    } else {
+                        td.textContent = row[header] || '';
+                    }
+                    tr.appendChild(td);
                 });
+                
+                tbody.appendChild(tr);
             });
 
             // Add summary rows
@@ -831,15 +877,19 @@
                     if (header === 'Quantity') {
                         // Calculate total quantity
                         let totalQty = 0;
-                        dataWithBalances.forEach(row => {
-                            totalQty += parseFloat(row['Quantity'] || 0);
+                        filteredData.forEach(row => {
+                            if (row['Ref_No'] !== 'Opening Balance') {
+                                totalQty += parseFloat(row['Quantity'] || 0);
+                            }
                         });
                         td.textContent = totalQty.toFixed(2);
                     } else if (header === 'Amount') {
                         // Calculate total amount
                         let totalAmt = 0;
-                        dataWithBalances.forEach(row => {
-                            totalAmt += parseFloat(row['Amount'] || 0);
+                        filteredData.forEach(row => {
+                            if (row['Ref_No'] !== 'Opening Balance') {
+                                totalAmt += parseFloat(row['Amount'] || 0);
+                            }
                         });
                         td.className = 'amount-column';
                         td.textContent = totalAmt.toFixed(2);
@@ -869,6 +919,9 @@
 
             // Sub Total and Total rows (now showing the final running balance)
             if ((hasAmount || hasTotal) && (hasReceived || hasPaid)) {
+                // Calculate final balance from running balance
+                let finalBalance = runningBalance;
+
                 const subtotalRow = document.createElement('tr');
                 subtotalRow.className = 'subtotal-row';
                 const subtotalCell = document.createElement('td');
@@ -1275,14 +1328,6 @@
             if (!printWindow) {
                 alert('Popup blocked. Please allow popups for this site.');
             }
-        
-            
-            setTimeout(() => {
-                const printWindow = window.open('/print', '_blank');
-                if (!printWindow) {
-                    alert('Popup blocked. Please allow popups for this site.');
-                }
-            }, 100);
         }
     </script>
 </body>
