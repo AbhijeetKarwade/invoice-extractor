@@ -340,6 +340,8 @@
         let rowIndexMap = []; // This will map filtered row indices to original data indices
         let preCalculatedBalances = {}; // Cache for calculated balances
 
+        let initialDateRange = { from: 'N/A', to: 'N/A' };
+
         // Load Excel File
         document.getElementById('loadFile').addEventListener('click', () => {
             const file = document.getElementById('fileInput').files[0];
@@ -439,46 +441,52 @@
         // Pre-calculate balances for all data once
         function calculateAllBalances(data) {
             const balances = {};
-            let runningBalance = 0;
+            const partyBalances = {};
             
-            const openingBalanceRow = data.find(row => row['Ref_No'] === 'Opening Balance');
-            if (openingBalanceRow) {
-                runningBalance = parseFloat(openingBalanceRow['Balance'] || 0);
-            }
-            
-            // Group transactions by date and Ref_No
-            const transactions = {};
+            // Group data by party
+            const parties = {};
             data.forEach(row => {
-                if (row['Ref_No'] === 'Opening Balance') return;
-                
-                const key = `${row['date']}_${row['Ref_No']}`;
-                if (!transactions[key]) {
-                    transactions[key] = {
-                        adjustment: calculateBalanceAdjustment(row),
-                        rows: []
-                    };
+                const party = row['Party Name_x'] || row['Party Name_y'] || 'Default';
+                if (!parties[party]) {
+                    parties[party] = [];
                 }
-                transactions[key].rows.push(row);
+                parties[party].push(row);
             });
             
-            // Sort transactions by date
-            const sortedKeys = Object.keys(transactions).sort((a, b) => {
-                const dateA = new Date(a.split('_')[0].split('/').reverse().join('/'));
-                const dateB = new Date(b.split('_')[0].split('/').reverse().join('/'));
-                return dateA - dateB;
-            });
-            
-            // Calculate running balances
-            sortedKeys.forEach(key => {
-                const group = transactions[key];
-                runningBalance += group.adjustment;
+            // Calculate balances for each party
+            Object.keys(parties).forEach(party => {
+                let runningBalance = 0;
+                const partyTransactions = parties[party];
                 
-                group.rows.forEach(row => {
-                    balances[`${row['date']}_${row['Ref_No']}`] = runningBalance;
+                // Find opening balance if exists
+                const openingBalanceRow = partyTransactions.find(row => row['Ref_No'] === 'Opening Balance');
+                if (openingBalanceRow) {
+                    runningBalance = parseFloat(openingBalanceRow['Balance'] || 0);
+                }
+                
+                // Sort transactions by date
+                const sortedTransactions = [...partyTransactions].sort((a, b) => {
+                    const dateA = a.date ? new Date(a.date.split('/').reverse().join('/')) : new Date(0);
+                    const dateB = b.date ? new Date(b.date.split('/').reverse().join('/')) : new Date(0);
+                    return dateA - dateB;
                 });
+                
+                // Calculate running balances for each transaction
+                sortedTransactions.forEach(row => {
+                    if (row['Ref_No'] === 'Opening Balance') {
+                        balances[`${row.date}_${row['Ref_No']}`] = runningBalance;
+                        return;
+                    }
+                    
+                    const adjustment = calculateBalanceAdjustment(row);
+                    runningBalance += adjustment;
+                    balances[`${row.date}_${row['Ref_No']}`] = runningBalance;
+                });
+                
+                partyBalances[party] = runningBalance;
             });
             
-            return balances;
+            return { balances, partyBalances };
         }
         
         function populateDropdowns() {
@@ -721,6 +729,16 @@
             
             const displayColumns = selectedColumns.length > 0 ? selectedColumns : headers;
             
+            // Add 'Est. Balance' column if not already present
+            if (!displayColumns.includes('Est. Balance') && 
+                (displayColumns.includes('Txn Type') || displayColumns.includes('Type')) && 
+                displayColumns.includes('Amount')) {
+                // Find the index of 'Amount' column
+                const amountIndex = displayColumns.indexOf('Amount');
+                // Insert 'Est. Balance' before 'Amount'
+                displayColumns.splice(amountIndex, 0, 'Est. Balance');
+            }
+            
             displayColumns.forEach(header => {
                 const th = document.createElement('th');
                 th.textContent = header === 'date' ? 'Date' : header;
@@ -828,6 +846,7 @@
                 }
                 tdSelect.appendChild(checkbox);
                 tr.appendChild(tdSelect);
+                
                 
                 // Add sequential number
                 const tdNum = document.createElement('td');
@@ -957,6 +976,7 @@
             } else {
                 showAllBtn.classList.add('hidden');
             }
+            
         }
 
         function updateFilterHistory() {
@@ -1088,6 +1108,21 @@
             currentWorkingData = workingData;
             filteredData = [...workingData];
             
+            // Update initial date range when first filter is applied
+            if (activeFilters.length > 0 && initialDateRange.from === 'N/A') {
+                const validDates = currentWorkingData
+                    .map(row => row.date ? new Date(row.date.split('/').reverse().join('/')) : null)
+                    .filter(date => date && !isNaN(date.getTime()));
+                
+                if (validDates.length > 0) {
+                    const minDate = new Date(Math.min(...validDates));
+                    const maxDate = new Date(Math.max(...validDates));
+                    
+                    initialDateRange.from = `${String(minDate.getDate()).padStart(2, '0')}/${String(minDate.getMonth() + 1).padStart(2, '0')}/${minDate.getFullYear()}`;
+                    initialDateRange.to = `${String(maxDate.getDate()).padStart(2, '0')}/${String(maxDate.getMonth() + 1).padStart(2, '0')}/${maxDate.getFullYear()}`;
+                }
+            }
+            
             // Remove blank/empty columns and columns with all zeros from filtered data
             const nonEmptyColumns = new Set();
             
@@ -1202,6 +1237,7 @@
             activeFilters = [];
             currentWorkingData = [...originalData];
             filteredData = [...originalData];
+            initialDateRange = { from: 'N/A', to: 'N/A' }; // Reset initial date range
             
             // Reset UI elements
             document.getElementById('nameSearchInput').value = '';
@@ -1303,22 +1339,23 @@
                 }
             }
 
-            // Calculate date range
-            const dateRange = { from: 'N/A', to: 'N/A' };
-            const validDates = dataToPrint
-                .map(row => row.date ? new Date(row.date.split('/').reverse().join('/')) : null)
-                .filter(date => date && !isNaN(date.getTime()));
-            
-            if (validDates.length > 0) {
-                const minDate = new Date(Math.min(...validDates));
-                const maxDate = new Date(Math.max(...validDates));
-                
-                dateRange.from = `${String(minDate.getDate()).padStart(2, '0')}/${String(minDate.getMonth() + 1).padStart(2, '0')}/${minDate.getFullYear()}`;
-                dateRange.to = `${String(maxDate.getDate()).padStart(2, '0')}/${String(maxDate.getMonth() + 1).padStart(2, '0')}/${maxDate.getFullYear()}`;
-            }
+            // Always use the initial date range
+            const dateRange = initialDateRange;
 
             // Store data for print view
+            // Get all transactions for this party from original data
+            const partyName = partyInfo.name;
+            let allPartyTransactions = [];
+            if (partyName && partyName !== 'Na') {
+                allPartyTransactions = originalData.filter(row => 
+                    (row['Party Name_x'] === partyName || row['Party Name_y'] === partyName));
+            } else {
+                allPartyTransactions = dataToPrint;
+            }
+            
+            // Store data for print view
             sessionStorage.setItem('filteredData', JSON.stringify(dataToPrint));
+            sessionStorage.setItem('allPartyTransactions', JSON.stringify(allPartyTransactions));
             sessionStorage.setItem('columnsToShow', JSON.stringify(displayColumns));
             sessionStorage.setItem('dateRange', JSON.stringify(dateRange));
             sessionStorage.setItem('partyInfo', JSON.stringify(partyInfo));
@@ -1329,6 +1366,7 @@
                 alert('Popup blocked. Please allow popups for this site.');
             }
         }
+        
     </script>
 </body>
 </html>

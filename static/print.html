@@ -136,7 +136,9 @@
         #mainHeaderTable th:nth-child(6),
         .header-table td:nth-child(6) { width: 10%; }
         #mainHeaderTable th:nth-child(7),
-        .header-table td:nth-child(7) { width: 12%; }
+        .header-table td:nth-child(7) { width: 10%; }
+        #mainHeaderTable th:nth-child(8),
+        .header-table td:nth-child(8) { width: 12%; }
         
         /* Item table column widths */
         .item-table th:nth-child(1) { width: 5%; }
@@ -209,6 +211,7 @@
                 <th>Total</th>
                 <th>Received/Paid</th>
                 <th>Txn Balance</th>
+                <th>O. Balance</th>
                 <th>Est. Balance</th>
             </tr>
         </thead>
@@ -273,10 +276,31 @@
                 return parseFloat(row['Received'] || row['Paid'] || 0);
             }
             
+            // Calculate balance adjustment based on transaction type
+            function calculateBalanceAdjustment(row) {
+                const type = (row['Txn Type'] || row['Type'] || 'Sale').toLowerCase();
+                let adjustment = 0;
+
+                if (type.includes('sale')) {
+                    adjustment = parseFloat(row['Balance'] || 0);
+                } else if (type.includes('payment-out') || type.includes('party to party [paid]')) {
+                    adjustment = parseFloat(row['Paid'] || 0);
+                } else if (type.includes('payment-in') || type.includes('party to party [received]')) {
+                    adjustment = -1 * parseFloat(row['Received'] || 0);
+                } else if (type.includes('purchase') || type.includes('credit note')) {
+                    adjustment = -1 * parseFloat(row['Balance'] || 0);
+                }
+
+                return adjustment;
+            }
+            
             // Create a transaction group element with multiple items
             function createTransactionGroup(txn, runningBalance) {
                 const groupDiv = document.createElement('div');
                 groupDiv.className = 'transaction-group';
+                
+                // Calculate O. Balance = Est. Balance - Txn Balance
+                const oBalance = (runningBalance - parseFloat(txn.balance || 0)).toFixed(2);
                 
                 // Transaction row
                 const headerTable = document.createElement('table');
@@ -291,6 +315,7 @@
                         <td>${formatValue(txn.amount)}</td>
                         <td>${formatValue(txn.payment)}</td>
                         <td>${formatValue(txn.balance)}</td>
+                        <td>${formatValue(oBalance)}</td>
                         <td>${formatValue(runningBalance)}</td>
                     </tr>
                 `;
@@ -372,18 +397,11 @@
             // Function to group transactions by date, refNo, and party
             function groupTransactions(rows) {
                 const grouped = {};
-                let runningBalance = 0;
-                
-                // Find opening balance if exists
-                const openingBalanceRow = rows.find(row => row['Ref_No'] === 'Opening Balance');
-                if (openingBalanceRow) {
-                    runningBalance = parseFloat(openingBalanceRow['Balance'] || 0);
-                }
                 
                 rows.forEach(row => {
                     if (row['Ref_No'] === 'Opening Balance') return;
                     
-                    const key = `${row['date']}_${row['Ref_No']}_${row['Party Name_y']}`;
+                    const key = `${row['date']}_${row['Ref_No']}_${row['Party Name_y'] || row['Party Name_x']}`;
                     
                     if (!grouped[key]) {
                         grouped[key] = {
@@ -402,26 +420,13 @@
                     }
                     
                     // Calculate balance adjustment based on transaction type
-                    let balanceAdjustment = 0;
-                    const txnType = (row['Txn Type'] || row['Type'] || 'Sale').toLowerCase();
-                    
-                    if (txnType.includes('sale')) {
-                        balanceAdjustment = parseFloat(row['Balance'] || 0);
-                    } else if (txnType.includes('payment-out') || txnType.includes('party to party [paid]')) {
-                        balanceAdjustment = parseFloat(row['Paid'] || 0);
-                    } else if (txnType.includes('payment-in') || txnType.includes('party to party [received]')) {
-                        balanceAdjustment = -1 * parseFloat(row['Received'] || 0);
-                    } else if (txnType.includes('purchase') || txnType.includes('credit note')) {
-                        balanceAdjustment = -1 * parseFloat(row['Balance'] || 0);
-                    }
-                    
-                    // Update the running balance
-                    runningBalance += balanceAdjustment;
-                    grouped[key].balance = balanceAdjustment;
-                    
-                    // Add to amounts
+                    grouped[key].balance = calculateBalanceAdjustment(row);
                     grouped[key].amount += parseFloat(row['Amount'] || 0);
-                    grouped[key].payment = parseFloat(row['Received'] || row['Paid'] || 0);
+                    // Add to amounts (only once per transaction)
+                    if (!grouped[key].payment || grouped[key].payment === 0) {
+                        grouped[key].payment = parseFloat(row['Received'] || row['Paid'] || 0);
+                    }
+
                     
                     // Add item details if available
                     if (row['Item Name'] || row['Quantity']) {
@@ -446,18 +451,90 @@
                 return Object.values(grouped);
             }
 
+            // Function to calculate running balances for all transactions
+            function calculateRunningBalances(transactions) {
+                let runningBalance = 0;
+                const balances = {};
+                
+                // Find opening balance if exists
+                const openingBalanceRow = transactions.find(row => row['Ref_No'] === 'Opening Balance');
+                if (openingBalanceRow) {
+                    runningBalance = parseFloat(openingBalanceRow['Balance'] || 0);
+                    balances[`${openingBalanceRow.date}_Opening Balance`] = runningBalance;
+                }
+                
+                // Group transactions by date and Ref_No to calculate balances correctly
+                const transactionGroups = {};
+                transactions.forEach(row => {
+                    if (row['Ref_No'] === 'Opening Balance') return;
+                    
+                    const key = `${row['date']}_${row['Ref_No']}_${row['Party Name_y'] || row['Party Name_x']}`;
+                    if (!transactionGroups[key]) {
+                        transactionGroups[key] = {
+                            adjustment: 0,
+                            date: row['date'],
+                            refNo: row['Ref_No']
+                        };
+                    }
+                    
+                    // Only add the adjustment once per transaction group
+                    if (transactionGroups[key].adjustment === 0) {
+                        transactionGroups[key].adjustment = calculateBalanceAdjustment(row);
+                    }
+                });
+                
+                // Convert to array and sort by date
+                const sortedGroups = Object.values(transactionGroups).sort((a, b) => {
+                    const dateA = a.date ? new Date(a.date.split('/').reverse().join('/')) : new Date(0);
+                    const dateB = b.date ? new Date(b.date.split('/').reverse().join('/')) : new Date(0);
+                    return dateA - dateB;
+                });
+                
+                // Calculate running balances for each transaction group
+                sortedGroups.forEach(group => {
+                    runningBalance += group.adjustment;
+                    balances[`${group.date}_${group.refNo}`] = runningBalance;
+                });
+                
+                return balances;
+            }
+
             // Function to load and display data
             function loadData() {
                 // Get data from session storage
                 const filteredData = JSON.parse(sessionStorage.getItem('filteredData') || '[]');
+                const allPartyTransactions = JSON.parse(sessionStorage.getItem('allPartyTransactions') || '[]');
                 const dateRange = JSON.parse(sessionStorage.getItem('dateRange') || '{}');
                 const partyInfo = JSON.parse(sessionStorage.getItem('partyInfo') || '{}');
                 
                 // Set header information
                 document.getElementById('partyName').textContent = partyInfo.name || 'Na';
                 document.getElementById('contactNo').textContent = partyInfo.mobile || 'Na';
+                
+                // Always show the full date range for the party, not the filtered range
+                const partyName = partyInfo.name || 'Na';
+                let fullPartyDateRange = { from: 'N/A', to: 'N/A' };
+                
+                if (partyName !== 'Na') {
+                    const partyTransactions = allPartyTransactions;
+                    
+                    if (partyTransactions.length > 0) {
+                        const dates = partyTransactions
+                            .map(row => row.date ? new Date(row.date.split('/').reverse().join('/')) : null)
+                            .filter(date => date && !isNaN(date.getTime()));
+                        
+                        if (dates.length > 0) {
+                            const minDate = new Date(Math.min(...dates));
+                            const maxDate = new Date(Math.max(...dates));
+                            
+                            fullPartyDateRange.from = `${String(minDate.getDate()).padStart(2, '0')}/${String(minDate.getMonth() + 1).padStart(2, '0')}/${minDate.getFullYear()}`;
+                            fullPartyDateRange.to = `${String(maxDate.getDate()).padStart(2, '0')}/${String(maxDate.getMonth() + 1).padStart(2, '0')}/${maxDate.getFullYear()}`;
+                        }
+                    }
+                }
+                
                 document.getElementById('duration').textContent = 
-                    ` ${dateRange.from || 'Na'} - ${dateRange.to || 'Na'}`;
+                    ` ${fullPartyDateRange.from || 'Na'} - ${fullPartyDateRange.to || 'Na'}`;
 
                 const transactionContainer = document.getElementById('transactionContainer');
                 const summaryRowsContainer = document.getElementById('summaryRows');
@@ -467,75 +544,45 @@
                     return;
                 }
 
-                // Group transactions by date, refNo, and party
-                const groupedTransactions = groupTransactions(filteredData);
+                // Calculate running balances for all party transactions
+                const allBalances = calculateRunningBalances(allPartyTransactions);
                 
-                // Process all transactions
-                let openingBalance = 0;
-                let runningBalance = 0;
+                // Group filtered transactions
+                const filteredGroupedTransactions = groupTransactions(filteredData);
                 
-                // Find opening balance
-                const openingBalanceRow = filteredData.find(row => row['Ref_No'] === 'Opening Balance');
-                if (openingBalanceRow) {
-                    openingBalance = parseFloat(openingBalanceRow['Balance'] || 0);
-                    runningBalance = openingBalance;
-                    
-                    // Create opening balance group
-                    const openingGroup = document.createElement('div');
-                    openingGroup.className = 'transaction-group';
-                    
-                    const headerTable = document.createElement('table');
-                    headerTable.className = 'header-table';
-                    headerTable.innerHTML = `
-                        <tbody>
-                            <tr>
-                                <td>Opening Balance</td>
-                                <td>N/A</td>
-                                <td>N/A</td>
-                                <td>${Math.abs(openingBalance).toFixed(2)}</td>
-                                <td>0.00</td>
-                                <td>${openingBalance.toFixed(2)}</td>
-                                <td>${openingBalance.toFixed(2)}</td>
-                            </tr>
-                        </tbody>
-                    `;
-                    openingGroup.appendChild(headerTable);
-                    
-                    const separator = document.createElement('div');
-                    separator.className = 'transaction-separator';
-                    openingGroup.appendChild(separator);
-                    
-                    transactionContainer.appendChild(openingGroup);
-                }
-
-                // Sort transactions by date
-                groupedTransactions.sort((a, b) => {
+                // Sort filtered transactions by date to display in chronological order
+                filteredGroupedTransactions.sort((a, b) => {
                     const dateA = a.date ? new Date(a.date.split('/').reverse().join('/')) : new Date(0);
                     const dateB = b.date ? new Date(b.date.split('/').reverse().join('/')) : new Date(0);
                     return dateA - dateB;
                 });
-
-                // Add each transaction as a separate group
-                groupedTransactions.forEach(txn => {
-                    runningBalance += txn.balance;
+                
+                // Add each filtered transaction with correct running balance
+                let lastEstBalance = 0;
+                filteredGroupedTransactions.forEach(txn => {
+                    // Find the balance for this transaction
+                    const balanceKey = `${txn.date}_${txn.refNo}`;
+                    const runningBalance = allBalances[balanceKey] || 0;
+                    lastEstBalance = runningBalance;
+                    
                     const transactionGroup = createTransactionGroup(txn, runningBalance);
                     transactionContainer.appendChild(transactionGroup);
                 });
 
-                // Add summary rows
+                // Add summary rows using the last Est. Balance value
                 const subtotalRow = document.createElement('tr');
                 subtotalRow.className = 'subtotal-row';
                 subtotalRow.innerHTML = `
-                    <td colspan="6"></td>
-                    <td class="amount-column">Sub Total: ${runningBalance.toFixed(2)}</td>
+                    <td colspan="7"></td>
+                    <td class="amount-column">Sub Total: ${lastEstBalance.toFixed(2)}</td>
                 `;
                 summaryRowsContainer.appendChild(subtotalRow);
 
                 const finalTotalRow = document.createElement('tr');
                 finalTotalRow.className = 'final-total-row';
                 finalTotalRow.innerHTML = `
-                    <td colspan="6"></td>
-                    <td class="amount-column">Total: ${runningBalance.toFixed(2)}</td>
+                    <td colspan="7"></td>
+                    <td class="amount-column">Total: ${lastEstBalance.toFixed(2)}</td>
                 `;
                 summaryRowsContainer.appendChild(finalTotalRow);
             }
