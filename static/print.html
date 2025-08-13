@@ -211,7 +211,7 @@
                 <th>Total</th>
                 <th>Received/Paid</th>
                 <th>Txn Balance</th>
-                <th>O. Balance</th>
+                <th>Open. Balance</th>
                 <th>Est. Balance</th>
             </tr>
         </thead>
@@ -250,20 +250,27 @@
                 return refNo.toString().replace(/\.00$/, '');
             }
 
-            // Extract party info from string
-            function extractPartyInfo(partyString) {
-                if (!partyString) return { name: '', mobile: '' };
-                
-                const mobileMatch = partyString.match(/\d{10}/);
+            function extractPartyInfo(row) {
+                if (!row) return { name: '', mobile: '' };
+
+                // Prefer name from Party Name_x if present, else from Party Name_y
+                const nameString = row['Party Name_x'] || row['Party Name_y'] || '';
+
+                // For mobile number, check both fields
+                const combinedPartyString = [row['Party Name_x'], row['Party Name_y']]
+                    .filter(Boolean) // remove undefined/null
+                    .join(' ');
+                const mobileMatch = combinedPartyString.match(/\d{10}/);
                 const mobile = mobileMatch ? mobileMatch[0] : '';
-                
-                let name = partyString.replace(/\(.*\d{10}.*\)/, '').trim();
+
+                // Clean the name (remove mobile numbers or parentheses)
+                let name = nameString.replace(/\(.*\d{10}.*\)/, '').trim();
                 if (!name) {
-                    name = partyString.replace(/\d{10}/, '').replace(/[()]/g, '').trim();
+                    name = nameString.replace(/\d{10}/, '').replace(/[()]/g, '').trim();
                 }
-                
+
                 return { name, mobile };
-            }
+}
 
             // Format date for display
             function formatDate(dateStr) {
@@ -315,8 +322,8 @@
                         <td>${formatValue(txn.amount)}</td>
                         <td>${formatValue(txn.payment)}</td>
                         <td>${formatValue(txn.balance)}</td>
-                        <td>${formatValue(oBalance)}</td>
-                        <td>${formatValue(runningBalance)}</td>
+                        <td>${formatValue(txn.openBalance || oBalance)}</td>
+                        <td>${formatValue(txn.estBalance || runningBalance)}</td>
                     </tr>
                 `;
                 headerTable.appendChild(headerBody);
@@ -411,6 +418,8 @@
                             amount: 0,
                             payment: 0,
                             balance: 0, // This will be calculated based on type
+                            openBalance: row['Open. Balance'], // Preserve pre-calculated value
+                            estBalance: row['Est. Balance'], // Preserve pre-calculated value
                             description: row['Description'] || row['Description_x'] || row['Description_y'],
                             description_x: row['Description_x'],
                             description_y: row['Description_y'],
@@ -501,18 +510,34 @@
 
             // Function to load and display data
             function loadData() {
-                // Get data from session storage
-                const filteredData = JSON.parse(sessionStorage.getItem('filteredData') || '[]');
-                const allPartyTransactions = JSON.parse(sessionStorage.getItem('allPartyTransactions') || '[]');
-                const dateRange = JSON.parse(sessionStorage.getItem('dateRange') || '{}');
-                const partyInfo = JSON.parse(sessionStorage.getItem('partyInfo') || '{}');
+                // Get data from session storage   13/08/2025
+                const filteredData = JSON.parse(sessionStorage.getItem('filteredData') || []);
+                const allPartyTransactions = JSON.parse(sessionStorage.getItem('allPartyTransactions') || []);
+                const dateRange = JSON.parse(sessionStorage.getItem('dateRange') || {});
+                const partyInfo = JSON.parse(sessionStorage.getItem('partyInfo') || {});
+                
+                // Try to find a row with party info in filteredData first
+                let partyRow = filteredData.find(row => row['Party Name_x'] || row['Party Name_y']);
+                if (!partyRow && allPartyTransactions.length > 0) {
+                    partyRow = allPartyTransactions.find(row => row['Party Name_x'] || row['Party Name_y']);
+                }
+                
+                // Extract party info with priority to Party Name_x
+                const extractedPartyInfo = extractPartyInfo(partyRow);
+                
+                // Use extracted info if available, otherwise fall back to stored partyInfo
+                const finalPartyInfo = {
+                    name: extractedPartyInfo.name || partyInfo.name || 'Na',
+                    mobile: extractedPartyInfo.mobile || partyInfo.mobile || 'Na'
+                };
                 
                 // Set header information
-                document.getElementById('partyName').textContent = partyInfo.name || 'Na';
-                document.getElementById('contactNo').textContent = partyInfo.mobile || 'Na';
+                document.getElementById('partyName').textContent = finalPartyInfo.name;
+                document.getElementById('contactNo').textContent = finalPartyInfo.mobile;
                 
+                // Rest of the function remains the same...
                 // Always show the full date range for the party, not the filtered range
-                const partyName = partyInfo.name || 'Na';
+                const partyName = finalPartyInfo.name || 'Na';
                 let fullPartyDateRange = { from: 'N/A', to: 'N/A' };
                 
                 if (partyName !== 'Na') {

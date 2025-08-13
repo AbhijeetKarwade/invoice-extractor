@@ -1317,8 +1317,8 @@
             }
         });
 
-        function prepareAndOpenPrintView(dataToPrint) {
-            // Ensure we have valid data
+        function prepareAndOpenPrintView(dataToPrint) {     
+            // Ensure we have valid data             13/08/2024
             if (!dataToPrint || dataToPrint.length === 0) {
                 alert('No valid data to print');
                 return;
@@ -1326,11 +1326,11 @@
 
             const displayColumns = selectedColumns.length > 0 ? selectedColumns : headers;
             
-            // Extract party information
+            // Extract party information - updated to check Party Name_x first
             let partyInfo = { name: 'N/A', mobile: 'N/A' };
-            const partyRow = dataToPrint.find(row => row['Party Name_y']);
+            const partyRow = dataToPrint.find(row => row['Party Name_x'] || row['Party Name_y']);
             if (partyRow) {
-                const partyString = partyRow['Party Name_y'];
+                const partyString = partyRow['Party Name_x'] || partyRow['Party Name_y'];
                 const mobileMatch = partyString.match(/\d{10}/);
                 partyInfo.mobile = mobileMatch ? mobileMatch[0] : 'N/A';
                 partyInfo.name = partyString.replace(/\(.*\d{10}.*\)/, '').trim();
@@ -1365,7 +1365,7 @@
             if (!printWindow) {
                 alert('Popup blocked. Please allow popups for this site.');
             }
-        }
+}
         
     </script>
 </body>
